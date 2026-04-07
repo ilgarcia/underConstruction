@@ -1,16 +1,10 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
-
-  // Dupla proteção: além do middleware.ts, a página verifica a sessão
-  if (!session) {
-    redirect("/");
-  }
 
   return (
     <div className="flex flex-col min-h-screen p-8 bg-zinc-50 dark:bg-black font-sans items-center justify-center">
@@ -23,7 +17,7 @@ export default async function DashboardPage() {
         </div>
         
         <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-          Você está vendo esta página pois sua conta (<span className="font-semibold text-zinc-900 dark:text-zinc-200">{session.user?.email}</span>) está na whitelist.
+          Você está vendo esta página pois sua conta (<span className="font-semibold text-zinc-900 dark:text-zinc-200">{session?.user?.email}</span>) está na whitelist.
         </p>
 
         <h2 className="text-lg font-medium mb-2 dark:text-white">Dados da Sessão:</h2>

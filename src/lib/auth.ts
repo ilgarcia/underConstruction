@@ -1,8 +1,8 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
-// Whitelist de emails permitidos
-const allowedUsers = ["limagarcia.igor@gmail.com", "email2@gmail.com"];
+// Whitelist de emails permitidos - temporario até criação e permissões
+const allowedUsers = process.env.ALLOWED_USERS?.split(",") || [];
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -11,19 +11,15 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     }),
   ],
-  // JWT é ideal quando não temos banco de dados pois a sessão do usuário 
-  // (incluindo informações básicas como email/nome) fica armazenada 
-  // num cookie seguro e criptografado no navegador.
   session: {
     strategy: "jwt",
   },
   callbacks: {
     async signIn({ user }) {
-      // Retornar true permite o login, false bloqueia (Apenas whitelist)
       if (user.email && allowedUsers.includes(user.email)) {
         return true;
       }
-      return false; // Usuário bloqueado se não estiver na lista
+      return false;
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
