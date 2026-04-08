@@ -27,10 +27,10 @@ export function Sidebar({ user }: SidebarProps) {
                   className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground shadow-sm transition-colors hover:text-foreground md:h-12 md:w-12 border-0"
                 >
                   <LayoutDashboard className="h-5 w-5" />
-                  <span className="sr-only">Dashboard</span>
+                  <span className="sr-only">Fluxo de Caixa</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right">Dashboard</TooltipContent>
+              <TooltipContent side="right">Fluxo de Caixa</TooltipContent>
             </Tooltip>
           </nav>
         </TooltipProvider>

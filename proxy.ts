@@ -5,5 +5,5 @@ export function proxy(request: any, event: any) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/cash-flow/:path*"],
 };
