@@ -44,6 +44,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 - **Local State**: Use `useState` for local component state.
 - **Global State**: Use Zustand for global state management.
+- **User Identity**: Mirror the NextAuth session identity (`id_user`, `ds_role`) in the Zustand `user-store.ts` for consistent and performant access throughout the platform.
 - **Server State**: Use React Query for server state management.
 
 ## 4. API Design

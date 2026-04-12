@@ -1,8 +1,8 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { supabaseAdmin } from "./supabase";
 
-// Whitelist de emails permitidos - temporario até criação e permissões
-const allowedUsers = process.env.ALLOWED_USERS?.split(",") || [];
+// Whitelist de emails permitidos - Removido process.env para usar Banco de Dados
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,12 +14,64 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
+  pages: {
+    error: "/",
+  },
   callbacks: {
     async signIn({ user }) {
-      if (user.email && allowedUsers.includes(user.email)) {
+      if (!user.email) return false;
+
+      try {
+        // 1. Verificar se o e-mail está na whitelist e se o status é 'accepted'
+        const { data: allowed, error: allowedError } = await supabaseAdmin
+          .from('tbl_allowed_users')
+          .select('ds_invite_status')
+          .eq('ds_email', user.email)
+          .single();
+
+        if (allowedError || !allowed || allowed.ds_invite_status !== 'accepted') {
+          console.warn(`Acesso negado para: ${user.email} (Status: ${allowed?.ds_invite_status || 'Inexistente'})`);
+          return false;
+        }
+
+        // 2. Se permitido, sincronizar com tbl_users
+        const { error } = await supabaseAdmin
+            .from('tbl_users')
+            .upsert(
+              { ds_email: user.email },
+              { onConflict: 'ds_email' }
+            );
+
+          if (error) {
+            console.error('Error syncing user with Supabase:', error);
+          }
+        } catch (err) {
+          console.error('Unexpected error during Supabase sync:', err);
+        }
         return true;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id_user = token.id_user as string;
+        session.user.ds_role = token.ds_role as string;
       }
-      return false;
+      return session;
+    },
+    async jwt({ token, user }) {
+      // On initial sign in, fetch fixed user data from Supabase
+      if (user || !token.id_user) {
+        const { data, error } = await supabaseAdmin
+          .from('tbl_users')
+          .select('id_user, ds_role')
+          .eq('ds_email', token.email)
+          .single();
+
+        if (data && !error) {
+          token.id_user = data.id_user;
+          token.ds_role = data.ds_role;
+        }
+      }
+      return token;
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
