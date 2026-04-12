@@ -23,35 +23,22 @@ This version has breaking changes — APIs, conventions, and file structure may 
   - `src/components/form/`: Full form components only.
 - **Form Rule (STRICT)**:
   - Any full form component MUST be placed inside `src/components/form/`.
-  - A form is defined as:
-    - Contains multiple fields
-    - Has validation and/or submission logic
-  - Examples:
-    - `quick-transaction-form`
-    - `user-form`
+- **Form Composition (STRICT)**:
+  - Each form MUST have its own folder inside `src/components/form/`.
+- **Scoped Components**:
+  - Components that belong exclusively to a form MUST be nested inside that form's directory.
+  - Example:
+    - `cash-flow-form/quick-transaction`
+    - `cash-flow-form/category`
+    - `cash-flow-form/cash-flow-chart`
+- **Encapsulation Rule**:
+  - Nested components are private to the form and MUST NOT be reused outside.
+  - If reuse is needed, move them to `custom/`.
+- **Naming Inside Forms**:
+  - Do NOT use `-form` suffix for nested components.
+  - The parent folder provides context.
 - **Field Components Rule**:
   - Input-like components MUST be placed inside `custom/`, NOT inside `form/`.
-  - Examples:
-    - `input`
-    - `combobox`
-    - `select`
-    - `date-picker`
-- **Custom Components Architecture**:
-  - All components (in `custom/` and `form/`) MUST be enclosed in their own directory (named in `kebab-case`).
-  - Strict folder structure:
-    - `index.tsx`: The main React component file.
-    - `types.ts`: A separate file strictly used for TypeScript interfaces/types.
-- **Barrel Export Rules**:
-  - Each folder MUST have its own `index.ts`:
-    - `custom/index.ts`
-    - `form/index.ts`
-  - Imports should follow:
-    - `@/components/custom`
-    - `@/components/form`
-- **Props**: Use TypeScript interfaces for component props (stored in `types.ts`).
-- **Styling**: Tailwind CSS is mandatory. Do not use inline styles or CSS modules. Do not apply any border radius — all elements must have sharp corners (no `rounded-*` classes).
-- **Dark Mode**: Support dark mode using the `dark:` prefix.
-- **Responsiveness**: Use a mobile-first approach.
 
 ## 3. State Management
 

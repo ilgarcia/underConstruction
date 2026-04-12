@@ -5,10 +5,10 @@ import { CategoryFormProps } from "./types";
 import { Button } from "@/components/ui/button";
 
 /**
- * CategoryForm - A dedicated form component for categorizing transactions.
+ * Category - A scoped form component for categorizing transactions.
  * This can be expanded with real select fields, tag pickers, etc.
  */
-export function CategoryForm({ targetLabel, onSubmit }: CategoryFormProps) {
+export function Category({ targetLabel, onSubmit }: CategoryFormProps) {
   return (
     <div className="space-y-6 pt-4">
       <div className="space-y-2">

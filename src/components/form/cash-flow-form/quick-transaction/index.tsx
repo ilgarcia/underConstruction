@@ -3,16 +3,16 @@
 import * as React from "react";
 import { 
   ActionInput, 
-  BaseDialog, 
-  CategoryForm 
+  BaseDialog 
 } from "@/components/custom";
+import { Category } from "../category";
 import { QuickTransactionFormProps } from "./types";
 
 /**
- * QuickTransactionForm - A client component that manages four financial inputs.
- * Recebíveis is read-only, while others are editable.
+ * QuickTransaction - A scoped component for the Cash Flow functional area.
+ * Manages four financial inputs with categorization support.
  */
-export function QuickTransactionForm({ className, labels }: QuickTransactionFormProps) {
+export function QuickTransaction({ className, labels }: QuickTransactionFormProps) {
   const [dialogConfig, setDialogConfig] = React.useState<{
     title: string;
     description?: React.ReactNode;
@@ -60,7 +60,7 @@ export function QuickTransactionForm({ className, labels }: QuickTransactionForm
           onAction={() => openDialog({
             title: `Categorizar: ${fieldLabels.invoice}`,
             content: (
-              <CategoryForm 
+              <Category 
                 targetLabel={fieldLabels.invoice} 
                 onSubmit={(data) => {
                   console.log("Fatura categorizada:", data);
@@ -81,7 +81,7 @@ export function QuickTransactionForm({ className, labels }: QuickTransactionForm
           onAction={() => openDialog({
             title: `Categorizar: ${fieldLabels.accounts}`,
             content: (
-              <CategoryForm 
+              <Category 
                 targetLabel={fieldLabels.accounts} 
                 onSubmit={(data) => {
                   console.log("Contas categorizadas:", data);
@@ -102,7 +102,7 @@ export function QuickTransactionForm({ className, labels }: QuickTransactionForm
           onAction={() => openDialog({
             title: `Categorizar: ${fieldLabels.receivables}`,
             content: (
-              <CategoryForm 
+              <Category 
                 targetLabel={fieldLabels.receivables} 
                 onSubmit={(data) => {
                   console.log("Recebível categorizado:", data);
