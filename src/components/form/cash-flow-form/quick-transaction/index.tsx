@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { 
-  ActionInput, 
-  BaseDialog 
+import {
+  ActionInput,
+  BaseDialog
 } from "@/components/custom";
+import { Button } from "@/components/ui/button";
+import { Save } from "lucide-react";
 import { Category } from "../category";
 import { QuickTransactionFormProps } from "./types";
 
@@ -19,10 +21,10 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
     content: React.ReactNode;
   } | null>(null);
 
-  const openDialog = (config: { 
-    title: string; 
-    description?: React.ReactNode; 
-    content: React.ReactNode 
+  const openDialog = (config: {
+    title: string;
+    description?: React.ReactNode;
+    content: React.ReactNode
   }) => {
     setDialogConfig(config);
   };
@@ -41,7 +43,7 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
       <h3 className="text-lg font-bold mb-6 text-foreground uppercase tracking-tight">
         Lançamentos Rápidos
       </h3>
-      
+
       <div className="space-y-6">
         {/* 1. Saldo (No button) */}
         <ActionInput
@@ -60,12 +62,12 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
           onAction={() => openDialog({
             title: `Categorizar: ${fieldLabels.invoice}`,
             content: (
-              <Category 
-                targetLabel={fieldLabels.invoice} 
+              <Category
+                targetLabel={fieldLabels.invoice}
                 onSubmit={(data) => {
                   console.log("Fatura categorizada:", data);
                   closeDialog();
-                }} 
+                }}
               />
             )
           })}
@@ -81,12 +83,12 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
           onAction={() => openDialog({
             title: `Categorizar: ${fieldLabels.accounts}`,
             content: (
-              <Category 
-                targetLabel={fieldLabels.accounts} 
+              <Category
+                targetLabel={fieldLabels.accounts}
                 onSubmit={(data) => {
                   console.log("Contas categorizadas:", data);
                   closeDialog();
-                }} 
+                }}
               />
             )
           })}
@@ -102,16 +104,26 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
           onAction={() => openDialog({
             title: `Categorizar: ${fieldLabels.receivables}`,
             content: (
-              <Category 
-                targetLabel={fieldLabels.receivables} 
+              <Category
+                targetLabel={fieldLabels.receivables}
                 onSubmit={(data) => {
                   console.log("Recebível categorizado:", data);
                   closeDialog();
-                }} 
+                }}
               />
             )
           })}
         />
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-border">
+        <Button
+          className="w-full h-11 text-xs font-bold uppercase tracking-[0.2em] bg-secondary text-secondary-foreground hover:opacity-90 transition-all duration-300 rounded-none shadow-sm"
+          onClick={() => console.log("Saving transaction data...")}
+        >
+          <Save className="w-3.5 h-3.5 mr-2" />
+          Salvar Dados
+        </Button>
       </div>
 
       {/* Modular Base Dialog */}

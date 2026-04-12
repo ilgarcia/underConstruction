@@ -1,7 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
+
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
 <!-- END:nextjs-agent-rules -->
 
 ## Context
@@ -217,8 +219,26 @@ src/
 - **Keyboard Shortcuts**: Implement keyboard shortcuts
 - **Testing**: Use accessibility testing tools
 
-
 ## 25. Testing Strategy
 
 - **Unit Tests**: Test individual components and functions
 - **Integration Tests**: Test component interactions
+
+## 26. Styling & Theming
+
+- **Global Variables (PREFERRED)**:
+  - Prefer defining design tokens (colors, spacing, font sizes, etc.) in `globals.css`.
+  - Use CSS variables (`:root`) for consistency and maintainability.
+
+- **Usage Rule**:
+  - Always use CSS variables instead of hardcoded values whenever possible.
+  - Example:
+    - ✅ `color: var(--primary)`
+    - ❌ `color: #3b82f6`
+
+- **Scope**:
+  - Global variables MUST be defined in `src/styles/globals.css`.
+  - Component-level overrides should be avoided unless strictly necessary.
+
+- **Consistency**:
+  - Reuse existing variables before creating new ones.
