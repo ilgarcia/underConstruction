@@ -106,7 +106,7 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
             readOnly={readOnlyInput}
             className={cn(
               "rounded-none h-full text-sm placeholder:text-zinc-500 border-0 focus-visible:ring-0",
-              readOnlyInput && "cursor-default bg-muted text-muted-foreground",
+              readOnlyInput && "cursor-default bg-muted dark:bg-muted/60 text-muted-foreground",
               className
             )}
             {...props}

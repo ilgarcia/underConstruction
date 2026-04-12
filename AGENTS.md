@@ -17,13 +17,39 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ## 2. Component Design
 
 - **Componentization**: Use Shadcn UI for componentization.
-- **Custom Components Architecture**: All custom components in `src/components/custom/` MUST be enclosed in their own directory (named in `kebab-case`).
+- **Component Structure**:
+  - `src/components/ui/`: Base UI components (Shadcn and low-level primitives).
+  - `src/components/custom/`: Reusable components (inputs, charts, UI compositions, etc.).
+  - `src/components/form/`: Full form components only.
+- **Form Rule (STRICT)**:
+  - Any full form component MUST be placed inside `src/components/form/`.
+  - A form is defined as:
+    - Contains multiple fields
+    - Has validation and/or submission logic
+  - Examples:
+    - `quick-transaction-form`
+    - `user-form`
+- **Field Components Rule**:
+  - Input-like components MUST be placed inside `custom/`, NOT inside `form/`.
+  - Examples:
+    - `input`
+    - `combobox`
+    - `select`
+    - `date-picker`
+- **Custom Components Architecture**:
+  - All components (in `custom/` and `form/`) MUST be enclosed in their own directory (named in `kebab-case`).
   - Strict folder structure:
-    - `{component-name}.tsx`: The main React component file.
+    - `index.tsx`: The main React component file.
     - `types.ts`: A separate file strictly used for TypeScript interfaces/types.
-  - **General Barrel Export**: There MUST be a single `index.ts` at the root of `src/components/custom/` acting as a global exporter for all custom components and types (e.g., `export * from './{folder}/{component-name}';`). Imports across the app should use `import { X } from "@/components/custom"`.
+- **Barrel Export Rules**:
+  - Each folder MUST have its own `index.ts`:
+    - `custom/index.ts`
+    - `form/index.ts`
+  - Imports should follow:
+    - `@/components/custom`
+    - `@/components/form`
 - **Props**: Use TypeScript interfaces for component props (stored in `types.ts`).
-**Styling**: Tailwind CSS is mandatory. Do not use inline styles or CSS modules. Do not apply any border radius — all elements must have sharp corners (no `rounded-*` classes).
+- **Styling**: Tailwind CSS is mandatory. Do not use inline styles or CSS modules. Do not apply any border radius — all elements must have sharp corners (no `rounded-*` classes).
 - **Dark Mode**: Support dark mode using the `dark:` prefix.
 - **Responsiveness**: Use a mobile-first approach.
 
