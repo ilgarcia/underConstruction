@@ -1,4 +1,5 @@
 import { InputHTMLAttributes, ReactNode } from "react";
+import { Control, FieldValues, Path } from "react-hook-form";
 
 export interface ActionInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "prefix"> {
   /**
@@ -17,7 +18,18 @@ export interface ActionInputProps extends Omit<InputHTMLAttributes<HTMLInputElem
   prefix?: ReactNode;
   
   /**
+   * Type of the input. Supports standard types plus "currency".
+   */
+  type?: "text" | "currency" | string & {};
+
+  /**
+   * Maximum integer digits acceptable (if type="currency"), e.g., 10 for "9999999999,99".
+   */
+  maxDigits?: number;
+
+  /**
    * If true, sets prefix to "R$" by default.
+   * @deprecated use type="currency" instead.
    */
   isFinancial?: boolean;
 
@@ -45,4 +57,9 @@ export interface ActionInputProps extends Omit<InputHTMLAttributes<HTMLInputElem
    * Container class names.
    */
   containerClassName?: string;
+}
+
+export interface FormActionInputProps<T extends FieldValues> extends ActionInputProps {
+  control: Control<T, any>;
+  name: Path<T>;
 }

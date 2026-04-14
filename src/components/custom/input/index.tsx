@@ -9,7 +9,19 @@ import {
   InputGroupButton,
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
-import { ActionInputProps } from "./types";
+import {
+  FormField,
+  FormItem,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import { ActionInputProps, FormActionInputProps } from "./types";
+import { FieldValues } from "react-hook-form";
+
+/**
+ * Helper to extract value safely from React input props (which could be string[])
+ */
+const getSafeValue = (v: any): string | number => Array.isArray(v) ? v[0] || "" : v;
 
 /**
  * ActionInput - A specialized input with support for prefixes and right-side action buttons.
@@ -27,22 +39,32 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
       actionLabel,
       actionIcon,
       onAction,
-      showButton = true,
+      showButton = false,
       onChange,
       defaultValue,
+      value,
+      type = "text",
+      maxDigits,
+      placeholder: passedPlaceholder,
       ...props
     },
     ref
   ) => {
     const id = React.useId();
-    const displayPrefix = isFinancial ? "R$" : prefix;
+    const isCurrency = type === "currency" || isFinancial;
+    const displayPrefix = isCurrency ? "R$" : prefix;
+    const placeholder = passedPlaceholder ?? (isCurrency ? "0,00" : undefined);
     const hasButton = showButton && (actionLabel || actionIcon || onAction);
 
     // Initial formatting logic for financial values
-    const formatCurrency = (value: string | number) => {
-      const numericValue = typeof value === "string"
-        ? parseInt(value.replace(/\D/g, "") || "0", 10)
-        : value;
+    const formatCurrency = (valRaw: string | number) => {
+      // Se for um número real (vindo do hook form, ex: 12.5), 
+      // convertemos para a representação de 'centavos' (1250) antes do replace
+      const strVal = typeof valRaw === "number"
+        ? (valRaw * 100).toFixed(0)
+        : String(valRaw);
+
+      const numericValue = parseInt(strVal.replace(/\D/g, "") || "0", 10);
 
       return new Intl.NumberFormat("pt-BR", {
         minimumFractionDigits: 2,
@@ -51,15 +73,35 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
     };
 
     const [val, setVal] = React.useState(
-      isFinancial ? formatCurrency(String(defaultValue || "0")) : String(defaultValue || "")
+      isCurrency ? formatCurrency(getSafeValue(value ?? defaultValue ?? 0)) : String(getSafeValue(value ?? defaultValue ?? ""))
     );
+
+    // Mantém o estado sincronizado se o React Hook Form (ou pái) alterar o value dinamicamente
+    React.useEffect(() => {
+      if (value !== undefined) {
+        setVal(isCurrency ? formatCurrency(getSafeValue(value)) : String(getSafeValue(value)));
+      }
+    }, [value, isCurrency]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       let nextValue = e.target.value;
 
-      if (isFinancial) {
-        // Remove all non-digits and format
-        const digits = nextValue.replace(/\D/g, "");
+      if (isCurrency) {
+        // Remove all non-digits
+        let digits = nextValue.replace(/\D/g, "");
+
+        if (maxDigits) {
+          // maxDigits applied to the integer part, meaning total digits = maxDigits + 2 (for cents)
+          const maxTotalDigits = maxDigits + 2;
+          // Trim leading zeros initially to count accurately
+          const cleanDigits = digits.replace(/^0+/, "");
+
+          if (cleanDigits.length > maxTotalDigits) {
+            // Se o usuário estourou o limite, nós cortamos os limpos (assim evitamos fatiar zeros à toa)
+            digits = cleanDigits.slice(0, maxTotalDigits);
+          }
+        }
+
         nextValue = formatCurrency(digits);
       }
 
@@ -104,6 +146,8 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
             value={val}
             onChange={handleChange}
             readOnly={readOnlyInput}
+            type={type === "currency" ? "text" : type}
+            placeholder={placeholder}
             className={cn(
               "rounded-none h-full text-sm placeholder:text-zinc-500 border-0 focus-visible:ring-0",
               readOnlyInput && "cursor-default bg-muted dark:bg-muted/60 text-muted-foreground",
@@ -129,3 +173,34 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
 );
 
 ActionInput.displayName = "ActionInput";
+
+/**
+ * FormActionInput - A React Hook Form integrated wrapper for ActionInput.
+ */
+export function FormActionInput<T extends FieldValues>({
+  control,
+  name,
+  ...props
+}: FormActionInputProps<T>) {
+  return (
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <FormControl>
+            <ActionInput
+              {...props}
+              {...field}
+              onChange={(e) => {
+                field.onChange(e); // Inform RHF
+                props.onChange?.(e); // Allow external onChange capture
+              }}
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
