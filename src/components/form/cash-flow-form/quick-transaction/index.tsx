@@ -3,11 +3,13 @@
 import * as React from "react";
 import {
   FormActionInput as Input,
-  BaseDialog
+  BaseDialog,
+  ActionButton,
 } from "@/components/custom";
-import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
-import { Category } from "../category";
+import { Category } from "./category";
+import { Accounts } from "./accounts";
+import { Receivables } from "./receivables";
 import { QuickTransactionFormProps } from "./types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,17 +44,17 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
     }
   }, [initialData, form]);
 
-  const onSubmit = (data: QuickTransactionData) => {
+  const onSubmit = async (data: QuickTransactionData) => {
+    // Mock delay to simulate async save — remove when wiring real API
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
     console.log("Saving transaction data...", data);
     setInitialData(data);
     form.reset(data);
 
     // Simulate updating external data
     const backendData = { balance: data.balance + 10, invoice: data.invoice };
-    // This allows testing the external data sync
-    setTimeout(() => {
-      syncExternalData(backendData, form.formState.isDirty);
-    }, 2000);
+    syncExternalData(backendData, form.formState.isDirty);
   };
 
   const openDialog = (config: {
@@ -80,14 +82,25 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* 1. Saldo (No button) */}
-          <Input
-            control={form.control}
-            name="balance"
-            label={fieldLabels.balance}
-            type="currency"
-            maxDigits={10}
-          />
+          {/* 1. Saldo + Salvar */}
+          <div className="grid grid-cols-12 gap-2 items-end">
+            <div className="col-span-9">
+              <Input
+                control={form.control}
+                name="balance"
+                label={fieldLabels.balance}
+                type="currency"
+              />
+            </div>
+            <div className="col-span-3">
+              <ActionButton
+                type="submit"
+                icon={<Save className="w-4 h-4" />}
+                loading={form.formState.isSubmitting}
+                disabled={!form.formState.dirtyFields.balance || form.formState.isSubmitting}
+              />
+            </div>
+          </div>
 
           {/* 2. Fatura (With button) */}
           <Input
@@ -95,9 +108,8 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
             name="invoice"
             label={fieldLabels.invoice}
             type="currency"
-            maxDigits={10}
-            actionLabel="Categorizar"
-            showButton={true}
+            actionInput
+            readOnlyInput
             onAction={() => openDialog({
               title: `Categorizar: ${fieldLabels.invoice}`,
               content: (
@@ -118,14 +130,12 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
             name="accounts"
             label={fieldLabels.accounts}
             type="currency"
-            maxDigits={10}
-            actionLabel="Categorizar"
+            actionInput
             readOnlyInput
-            showButton={true}
             onAction={() => openDialog({
               title: `Categorizar: ${fieldLabels.accounts}`,
               content: (
-                <Category
+                <Accounts
                   targetLabel={fieldLabels.accounts}
                   onSubmit={(data) => {
                     console.log("Contas categorizadas:", data);
@@ -142,14 +152,12 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
             name="receivables"
             label={fieldLabels.receivables}
             type="currency"
-            maxDigits={10}
-            actionLabel="Categorizar"
+            actionInput
             readOnlyInput
-            showButton={true}
             onAction={() => openDialog({
               title: `Categorizar: ${fieldLabels.receivables}`,
               content: (
-                <Category
+                <Receivables
                   targetLabel={fieldLabels.receivables}
                   onSubmit={(data) => {
                     console.log("Recebível categorizado:", data);
@@ -160,16 +168,7 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
             })}
           />
 
-          <div className="mt-8 pt-6 border-t border-border">
-            <Button
-              type="submit"
-              disabled={!form.formState.isDirty || form.formState.isSubmitting}
-              className="w-full h-11 text-xs font-bold uppercase tracking-[0.2em] bg-secondary text-secondary-foreground hover:opacity-90 transition-all duration-300 rounded-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-3.5 h-3.5 mr-2" />
-              Salvar Dados
-            </Button>
-          </div>
+
         </form>
       </Form>
 

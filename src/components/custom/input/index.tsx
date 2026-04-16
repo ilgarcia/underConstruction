@@ -16,7 +16,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { ActionInputProps, FormActionInputProps } from "./types";
+
 import { FieldValues } from "react-hook-form";
+import { Plus } from "lucide-react";
 
 /**
  * Helper to extract value safely from React input props (which could be string[])
@@ -39,12 +41,13 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
       actionLabel,
       actionIcon,
       onAction,
+      actionInput = false,
       showButton = false,
       onChange,
       defaultValue,
       value,
       type = "text",
-      maxDigits,
+      maxDigits = 10,
       placeholder: passedPlaceholder,
       ...props
     },
@@ -54,7 +57,7 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
     const isCurrency = type === "currency" || isFinancial;
     const displayPrefix = isCurrency ? "R$" : prefix;
     const placeholder = passedPlaceholder ?? (isCurrency ? "0,00" : undefined);
-    const hasButton = showButton && (actionLabel || actionIcon || onAction);
+    const hasButton = actionInput || (showButton && (actionLabel || actionIcon || onAction));
 
     // Initial formatting logic for financial values
     const formatCurrency = (valRaw: string | number) => {
@@ -162,8 +165,14 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
               onClick={onAction}
               className="rounded-none h-full border-l border-zinc-200 dark:border-zinc-800 px-4 font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group-focus-within/input-group:border-primary"
             >
-              {actionIcon && <span className="shrink-0">{actionIcon}</span>}
-              {actionLabel && <span>{actionLabel}</span>}
+              {actionInput ? (
+                <Plus className="w-4 h-4" />
+              ) : (
+                <>
+                  {actionIcon && <span className="shrink-0">{actionIcon}</span>}
+                  {actionLabel && <span>{actionLabel}</span>}
+                </>
+              )}
             </InputGroupButton>
           )}
         </InputGroup>

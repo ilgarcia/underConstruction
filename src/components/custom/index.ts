@@ -12,6 +12,9 @@ export * from "./buttons/login-button/types";
 export * from "./buttons/logout-button/index";
 export * from "./buttons/logout-button/types";
 
+export * from "./buttons/action-button/index";
+export * from "./buttons/action-button/types";
+
 export * from "./input/index";
 export * from "./input/types";
 

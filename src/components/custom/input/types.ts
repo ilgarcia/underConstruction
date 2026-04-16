@@ -52,6 +52,11 @@ export interface ActionInputProps extends Omit<InputHTMLAttributes<HTMLInputElem
    * If false, the button will not be rendered even if onAction is provided.
    */
   showButton?: boolean;
+
+  /**
+   * If true, shows an action button with a default Plus icon.
+   */
+  actionInput?: boolean;
   
   /**
    * Container class names.
