@@ -1,13 +1,10 @@
 import { Page } from "@/components/custom";
 import { CashFlowForm } from "@/components/form";
+import { formatDate } from "@/helpers/date";
 
 export default async function CashFlowPage() {
   const now = new Date();
-  const today = now.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const today = formatDate(now);
 
   return (
     <Page

@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { useUserStore } from "@/store/user-store";
 
-// ---------------------------------------------------------------------------
-// Shared type
-// ---------------------------------------------------------------------------
-
 interface WalletRecord {
   id_user_wallet: string;
   id_user: string;
@@ -13,21 +9,11 @@ interface WalletRecord {
   dt_updated: string;
 }
 
-// ---------------------------------------------------------------------------
-// useWalletInit — fetch or create the wallet record on mount
-// ---------------------------------------------------------------------------
-
 interface UseWalletInitResult {
   wallet: WalletRecord | null;
   isLoading: boolean;
   error: string | null;
 }
-
-/**
- * Fetches (or initializes) the current user's wallet via GET /api/wallet.
- * Waits for the Zustand user store to hydrate before firing the request.
- * Creates a wallet with vl_balance = 0 if none exists (handled server-side).
- */
 function useWalletInit(): UseWalletInitResult {
   const isLoaded = useUserStore((state) => state.isLoaded);
 
@@ -78,19 +64,12 @@ function useWalletInit(): UseWalletInitResult {
   return { wallet, isLoading, error };
 }
 
-// ---------------------------------------------------------------------------
-// useWalletUpdate — update vl_balance of an existing wallet record
-// ---------------------------------------------------------------------------
-
 interface UseWalletUpdateResult {
   isUpdating: boolean;
   error: string | null;
   updateBalance: (id_user_wallet: string, vl_balance: number) => Promise<void>;
 }
 
-/**
- * Exposes an updateBalance action that calls PATCH /api/wallet.
- */
 function useWalletUpdate(): UseWalletUpdateResult {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,10 +102,6 @@ function useWalletUpdate(): UseWalletUpdateResult {
 
   return { isUpdating, error, updateBalance };
 }
-
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
 
 export type { WalletRecord };
 export { useWalletInit, useWalletUpdate };

@@ -1,5 +1,4 @@
 "use client";
-
 import { SessionProvider } from "next-auth/react";
 import { UserStoreSync } from "./user-store-sync";
 

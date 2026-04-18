@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { CashFlowFormProps } from "./types";
 import { QuickTransaction } from "./quick-transaction";
 import { CashFlowChart } from "./cash-flow-chart";

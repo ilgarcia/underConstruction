@@ -2,8 +2,6 @@ import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { supabaseAdmin } from "./supabase";
 
-// Whitelist de emails permitidos - Removido process.env para usar Banco de Dados
-
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -58,7 +56,6 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async jwt({ token, user }) {
-      // On initial sign in, fetch fixed user data from Supabase
       if (user || !token.id_user) {
         const { data, error } = await supabaseAdmin
           .from('tbl_users')

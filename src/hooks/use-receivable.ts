@@ -27,9 +27,6 @@ interface UseReceivableCreateResult {
   }>) => Promise<ReceivableRecord | ReceivableRecord[]>;
 }
 
-/**
- * Exposes a createReceivable action that calls POST /api/cash-flow/receivable.
- */
 function useReceivableCreate(): UseReceivableCreateResult {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,9 +75,6 @@ interface UseReceivableDeleteResult {
   deleteReceivables: (ids: string[]) => Promise<void>;
 }
 
-/**
- * Exposes a deleteReceivables action that calls DELETE /api/cash-flow/receivable.
- */
 function useReceivableDelete(): UseReceivableDeleteResult {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,9 +116,6 @@ interface UseReceivableUpdateResult {
   }) => Promise<ReceivableRecord>;
 }
 
-/**
- * Exposes an updateReceivable action that calls PATCH /api/cash-flow/receivable.
- */
 function useReceivableUpdate(): UseReceivableUpdateResult {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -162,10 +153,6 @@ function useReceivableUpdate(): UseReceivableUpdateResult {
   return { isUpdating, error, updateReceivable };
 }
 
-// ---------------------------------------------------------------------------
-// useReceivableList — syncs with the global receivable store
-// ---------------------------------------------------------------------------
-
 interface UseReceivableListResult {
   receivables: ReceivableRecord[];
   totalSum: number;
@@ -191,10 +178,6 @@ function useReceivableList(id_user_wallet: string | undefined): UseReceivableLis
     refresh: () => id_user_wallet ? fetchReceivables(id_user_wallet) : Promise.resolve() 
   };
 }
-
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
 
 export type { ReceivableRecord };
 export { useReceivableCreate, useReceivableList, useReceivableDelete, useReceivableUpdate };

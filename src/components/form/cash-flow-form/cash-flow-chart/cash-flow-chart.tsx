@@ -10,6 +10,7 @@ import {
   Tooltip,
 } from "recharts";
 import { CashFlowChartProps, ChartDataPoint } from "./types";
+import { formatDateShort } from "@/helpers/date";
 
 /**
  * Generates 30 days of mock cash flow data starting from `startDate`.
@@ -27,10 +28,7 @@ function generateMockData(startDate: Date): ChartDataPoint[] {
     balance = Math.max(0, balance + delta);
 
     data.push({
-      date: date.toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-      }),
+      date: formatDateShort(date),
       value: Math.round(balance),
     });
   }
