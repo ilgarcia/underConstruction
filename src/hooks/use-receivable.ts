@@ -19,7 +19,12 @@ interface UseReceivableCreateResult {
     ds_receivable: string;
     vl_receivable: number;
     vl_day_receivable: number;
-  }) => Promise<ReceivableRecord>;
+  } | Array<{
+    id_user_wallet: string;
+    ds_receivable: string;
+    vl_receivable: number;
+    vl_day_receivable: number;
+  }>) => Promise<ReceivableRecord | ReceivableRecord[]>;
 }
 
 /**
@@ -34,7 +39,12 @@ function useReceivableCreate(): UseReceivableCreateResult {
     ds_receivable: string;
     vl_receivable: number;
     vl_day_receivable: number;
-  }): Promise<ReceivableRecord> => {
+  } | Array<{
+    id_user_wallet: string;
+    ds_receivable: string;
+    vl_receivable: number;
+    vl_day_receivable: number;
+  }>): Promise<ReceivableRecord | ReceivableRecord[]> => {
     setIsCreating(true);
     setError(null);
 
@@ -60,6 +70,96 @@ function useReceivableCreate(): UseReceivableCreateResult {
   };
 
   return { isCreating, error, createReceivable };
+}
+
+interface UseReceivableDeleteResult {
+  isDeleting: boolean;
+  error: string | null;
+  deleteReceivables: (ids: string[]) => Promise<void>;
+}
+
+/**
+ * Exposes a deleteReceivables action that calls DELETE /api/cash-flow/receivable.
+ */
+function useReceivableDelete(): UseReceivableDeleteResult {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const deleteReceivables = async (ids: string[]) => {
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/cash-flow/receivable", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+
+      if (!res.ok) {
+        const { error: msg } = await res.json();
+        throw new Error(msg ?? "Failed to delete receivables");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+      throw err;
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return { isDeleting, error, deleteReceivables };
+}
+
+interface UseReceivableUpdateResult {
+  isUpdating: boolean;
+  error: string | null;
+  updateReceivable: (params: {
+    id_receivable: string;
+    ds_receivable?: string;
+    vl_receivable?: number;
+    vl_day_receivable?: number;
+  }) => Promise<ReceivableRecord>;
+}
+
+/**
+ * Exposes an updateReceivable action that calls PATCH /api/cash-flow/receivable.
+ */
+function useReceivableUpdate(): UseReceivableUpdateResult {
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateReceivable = async (params: {
+    id_receivable: string;
+    ds_receivable?: string;
+    vl_receivable?: number;
+    vl_day_receivable?: number;
+  }): Promise<ReceivableRecord> => {
+    setIsUpdating(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/cash-flow/receivable", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+
+      if (!res.ok) {
+        const { error: msg } = await res.json();
+        throw new Error(msg ?? "Failed to update receivable");
+      }
+
+      return await res.json();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+      throw err;
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return { isUpdating, error, updateReceivable };
 }
 
 // ---------------------------------------------------------------------------
@@ -97,4 +197,4 @@ function useReceivableList(id_user_wallet: string | undefined): UseReceivableLis
 // ---------------------------------------------------------------------------
 
 export type { ReceivableRecord };
-export { useReceivableCreate, useReceivableList };
+export { useReceivableCreate, useReceivableList, useReceivableDelete, useReceivableUpdate };

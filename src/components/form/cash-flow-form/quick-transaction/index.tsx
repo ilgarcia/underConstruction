@@ -189,24 +189,10 @@ export function QuickTransaction({
                   <Receivables
                     targetLabel={fieldLabels.receivables}
                     idUserWallet={wallet?.id_user_wallet}
+                    onClose={closeDialog}
                     onSubmit={async (data) => {
-                      if (!wallet?.id_user_wallet) {
-                        toast.error("Carteira não localizada.");
-                        return;
-                      }
-
-                      try {
-                        await createReceivable({
-                          id_user_wallet: wallet.id_user_wallet,
-                          ds_receivable: data.description,
-                          vl_receivable: data.value,
-                          vl_day_receivable: data.day_picker,
-                        });
-                        toast.success("Recebível cadastrado!");
-                        closeDialog();
-                      } catch (err: any) {
-                        toast.error(err.message || "Erro ao salvar recebível.");
-                      }
+                      // Receivables component now handles its own creation/refresh.
+                      // We can add logic here if the parent needs to sync something else.
                     }}
                   />
                 ),

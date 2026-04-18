@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/cash-flow/receivable
- * Creates a new receivable record.
+ * Creates one or more new receivable records.
  */
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -51,48 +51,156 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const body = await request.json();
+  const isBatch = Array.isArray(body);
+
+  if (isBatch) {
+    if (body.length === 0) {
+      return NextResponse.json({ error: "Empty batch" }, { status: 400 });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("tbl_receivables")
+      .insert(
+        body.map((item: any) => ({
+          id_user_wallet: item.id_user_wallet,
+          ds_receivable: item.ds_receivable,
+          vl_receivable: item.vl_receivable,
+          vl_day_receivable: item.vl_day_receivable,
+        })),
+      )
+      .select();
+
+    if (error) {
+      return NextResponse.json(
+        { error: `Failed to create receivables batch: ${error.message}` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(data, { status: 201 });
+  } else {
+    const { id_user_wallet, ds_receivable, vl_receivable, vl_day_receivable } =
+      body;
+
+    if (
+      !id_user_wallet ||
+      !ds_receivable ||
+      vl_receivable === undefined ||
+      vl_day_receivable === undefined
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "id_user_wallet, ds_receivable, vl_receivable, and vl_day_receivable are required",
+        },
+        { status: 400 },
+      );
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("tbl_receivables")
+      .insert({
+        id_user_wallet,
+        ds_receivable,
+        vl_receivable,
+        vl_day_receivable,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json(
+        { error: `Failed to create receivable: ${error.message}` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(data, { status: 201 });
+  }
+}
+
+/**
+ * DELETE /api/cash-flow/receivable
+ * Hard deletes receivables by a list of ids.
+ */
+export async function DELETE(request: Request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id_user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { ids } = (await request.json()) as { ids: string[] };
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return NextResponse.json(
+      { error: "A list of ids is required" },
+      { status: 400 },
+    );
+  }
+
+  const { error } = await supabaseAdmin
+    .from("tbl_receivables")
+    .delete()
+    .in("id_receivable", ids);
+
+  if (error) {
+    return NextResponse.json(
+      { error: `Failed to delete receivables: ${error.message}` },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ success: true });
+}
+
+/**
+ * PATCH /api/cash-flow/receivable
+ * Updates an existing receivable record.
+ */
+export async function PATCH(request: Request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id_user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = (await request.json()) as {
-    id_user_wallet: string;
-    ds_receivable: string;
-    vl_receivable: number;
-    vl_day_receivable: number;
+    id_receivable: string;
+    ds_receivable?: string;
+    vl_receivable?: number;
+    vl_day_receivable?: number;
   };
 
-  const { id_user_wallet, ds_receivable, vl_receivable, vl_day_receivable } =
+  const { id_receivable, ds_receivable, vl_receivable, vl_day_receivable } =
     body;
 
-  if (
-    !id_user_wallet ||
-    !ds_receivable ||
-    vl_receivable === undefined ||
-    vl_day_receivable === undefined
-  ) {
+  if (!id_receivable) {
     return NextResponse.json(
-      {
-        error:
-          "id_user_wallet, ds_receivable, vl_receivable, and vl_day_receivable are required",
-      },
+      { error: "id_receivable is required" },
       { status: 400 },
     );
   }
 
   const { data, error } = await supabaseAdmin
     .from("tbl_receivables")
-    .insert({
-      id_user_wallet,
+    .update({
       ds_receivable,
       vl_receivable,
       vl_day_receivable,
+      dt_updated: new Date().toISOString(),
     })
+    .eq("id_receivable", id_receivable)
     .select()
     .single();
 
   if (error) {
     return NextResponse.json(
-      { error: `Failed to create receivable: ${error.message}` },
+      { error: `Failed to update receivable: ${error.message}` },
       { status: 500 },
     );
   }
 
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(data);
 }

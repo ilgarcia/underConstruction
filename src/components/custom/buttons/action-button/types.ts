@@ -1,11 +1,15 @@
 import { ButtonHTMLAttributes, ReactNode } from "react";
 
-/** Requires at least one of `icon` or `label` */
 type ActionButtonBase = {
-  /** Loading state — renders a spinner in place of the icon */
   loading?: boolean;
-  /** Extra classes for the button */
   className?: string;
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
 type WithIcon = ActionButtonBase & { icon: ReactNode; label?: ReactNode };

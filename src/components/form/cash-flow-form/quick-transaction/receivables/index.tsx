@@ -1,5 +1,4 @@
-"use client";
-
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ReceivablesFormProps } from "./types";
@@ -9,19 +8,25 @@ import {
 import { FormActionInput as Input } from "@/components/custom/input";
 import { ActionButton } from "@/components/custom/buttons/action-button";
 import { receivablesSchema, ReceivablesData, ReceivablesInput } from "./schema";
-import { useReceivableList } from "@/hooks/use-receivable";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  useReceivableList, 
+  ReceivableRecord, 
+  useReceivableDelete, 
+  useReceivableCreate,
+  useReceivableUpdate
+} from "@/hooks/use-receivable";
+import { CustomList, ListColumn } from "@/components/custom";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-export function Receivables({ targetLabel, idUserWallet, onSubmit }: ReceivablesFormProps) {
+export function Receivables({ targetLabel, idUserWallet, onSubmit, onClose }: ReceivablesFormProps) {
   const { receivables, isLoading, refresh } = useReceivableList(idUserWallet);
+  const { deleteReceivables } = useReceivableDelete();
+  const { createReceivable } = useReceivableCreate();
+  const { updateReceivable } = useReceivableUpdate();
+
+  const [editItem, setEditItem] = useState<ReceivableRecord | null>(null);
+  const isEditing = !!editItem;
 
   const form = useForm<ReceivablesInput, undefined, ReceivablesData>({
     resolver: zodResolver(receivablesSchema),
@@ -32,20 +37,126 @@ export function Receivables({ targetLabel, idUserWallet, onSubmit }: Receivables
     },
   });
 
+  const handleCancelEdit = () => {
+    setEditItem(null);
+    form.reset({
+      day_picker: new Date().getDate(),
+      description: "",
+      value: 0,
+    });
+  };
+
   const handleSubmit = async (data: ReceivablesData) => {
-    await onSubmit?.(data);
-    await refresh(); // Reload data after submission
-    form.reset(); // clear the form to add new ones more easily
+    try {
+      if (isEditing && editItem) {
+        await updateReceivable({
+          id_receivable: editItem.id_receivable,
+          ds_receivable: data.description,
+          vl_receivable: data.value,
+          vl_day_receivable: data.day_picker,
+        });
+        toast.success("Recebível atualizado com sucesso!");
+        setEditItem(null);
+      } else {
+        await createReceivable({
+          id_user_wallet: idUserWallet || "",
+          ds_receivable: data.description,
+          vl_receivable: data.value,
+          vl_day_receivable: data.day_picker,
+        });
+        await onSubmit?.(data);
+        toast.success("Recebível adicionado com sucesso!");
+      }
+      
+      await refresh();
+      form.reset({
+        day_picker: new Date().getDate(),
+        description: "",
+        value: 0,
+      });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar recebível.");
+    }
+  };
+
+  const handleRowClick = (item: ReceivableRecord) => {
+    setEditItem(item);
+    form.reset({
+      day_picker: item.vl_day_receivable,
+      description: item.ds_receivable,
+      value: item.vl_receivable,
+    });
   };
 
   const isSubmitting = form.formState.isSubmitting;
 
+  const handleDelete = async (ids: string[]) => {
+    await deleteReceivables(ids);
+    if (editItem && ids.includes(editItem.id_receivable)) {
+      handleCancelEdit();
+    }
+    await refresh();
+  };
+
+  const handleUndo = async (items: ReceivableRecord[]) => {
+    await createReceivable(
+      items.map((item) => ({
+        id_user_wallet: item.id_user_wallet,
+        ds_receivable: item.ds_receivable,
+        vl_receivable: item.vl_receivable,
+        vl_day_receivable: item.vl_day_receivable,
+      })),
+    );
+    await refresh();
+  };
+
+  const columns: ListColumn<ReceivableRecord>[] = [
+    {
+      header: "Dia",
+      render: (item) => item.vl_day_receivable,
+      className: "w-[60px] font-medium text-xs text-center",
+    },
+    {
+      header: "Descrição",
+      render: (item) => item.ds_receivable,
+      className: "text-xs text-zinc-600 dark:text-zinc-400 truncate max-w-[150px]",
+    },
+    {
+      header: "Valor",
+      render: (item) =>
+        Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }).format(item.vl_receivable),
+      className: "text-right text-xs pr-4",
+    },
+  ];
+
   return (
     <div className="space-y-6 pt-4">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Gerenciar recebíveis para <strong>{targetLabel}</strong>.
-        </p>
+      <div className="flex items-center justify-between min-h-[45px] transition-all duration-300">
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Gerenciar recebíveis para <strong>{targetLabel}</strong>.
+          </p>
+          <p className={cn(
+            "text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1 transition-all duration-300",
+            isEditing ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 pointer-events-none h-0 sm:h-auto"
+          )}>
+             Editando: <span className="text-blue-600 dark:text-blue-400 font-bold">{editItem?.ds_receivable}</span>
+          </p>
+        </div>
+        <div className={cn(
+          "transition-all duration-300",
+          isEditing ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
+        )}>
+          <ActionButton
+            label="Cancelar Edição"
+            onClick={handleCancelEdit}
+            className="text-xs w-fit"
+            variant="outline"
+          />
+        </div>
       </div>
 
       <Form {...form}>
@@ -81,7 +192,7 @@ export function Receivables({ targetLabel, idUserWallet, onSubmit }: Receivables
           <div className="col-span-2 pt-[22px]">
             <ActionButton
               type="submit"
-              label="Confirmar"
+              label={isEditing ? "Salvar alterações" : "Confirmar"}
               loading={isSubmitting}
               className="w-full rounded-none h-9"
             />
@@ -89,58 +200,20 @@ export function Receivables({ targetLabel, idUserWallet, onSubmit }: Receivables
         </form>
       </Form>
 
-      <div className="border-t border-zinc-200 dark:border-zinc-800 pt-6">
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-          Recebíveis Cadastrados
-        </h3>
-
-        <div className="border border-zinc-200 dark:border-zinc-800 h-[200px] overflow-auto">
-          <Table>
-            <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50 sticky top-0">
-              <TableRow>
-                <TableHead className="w-[40px] px-4">
-                  <Checkbox className="border-zinc-300 pointer-events-none" />
-                </TableHead>
-                <TableHead className="w-[60px]">Dia</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead className="text-right pr-4">Valor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center h-24 text-zinc-500">
-                    Carregando...
-                  </TableCell>
-                </TableRow>
-              ) : receivables.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center h-24 text-zinc-500">
-                    Nenhum recebível cadastrado.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                receivables.map((item) => (
-                  <TableRow key={item.id_receivable}>
-                    <TableCell className="px-4">
-                      <Checkbox className="border-zinc-300" />
-                    </TableCell>
-                    <TableCell className="font-medium text-xs">{item.vl_day_receivable}</TableCell>
-                    <TableCell className="text-xs text-zinc-600 dark:text-zinc-400 truncate max-w-[150px]">
-                      {item.ds_receivable}
-                    </TableCell>
-                    <TableCell className="text-right text-xs pr-4">
-                      {Intl.NumberFormat("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      }).format(item.vl_receivable)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+      <div className="border-t border-zinc-200 dark:border-zinc-800 p-2">
+        <CustomList<ReceivableRecord>
+          title="Recebíveis Cadastrados"
+          items={receivables}
+          idKey="id_receivable"
+          columns={columns}
+          isLoading={isLoading}
+          onDeleteBatch={handleDelete}
+          onUndo={handleUndo}
+          onEdit={handleRowClick}
+          highlightedId={editItem?.id_receivable}
+          showConfirmation={false}
+          enableUndo={true}
+        />
       </div>
     </div>
   );
