@@ -4,6 +4,7 @@ import * as React from "react";
 import { CashFlowFormProps } from "./types";
 import { QuickTransaction } from "./quick-transaction";
 import { CashFlowChart } from "./cash-flow-chart";
+import { useWalletInit } from "@/hooks/use-wallet";
 
 /**
  * CashFlowForm - The main feature composition for the Cash Flow dashboard.
@@ -14,12 +15,15 @@ import { CashFlowChart } from "./cash-flow-chart";
  * to this directory.
  */
 export function CashFlowForm({ startDate, className }: CashFlowFormProps) {
+  // Ensures a wallet row exists for the current user in tbl_user_wallet.
+  // Creates one with vl_balance = 0 if not found.
+  const { wallet } = useWalletInit();
   return (
     <div className="grid grid-cols-12 gap-8 flex-1 min-h-0">
       {/* Left Column (Quick Transaction) */}
       <aside className="col-span-12 lg:col-span-4 flex flex-col">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm flex-1">
-          <QuickTransaction />
+          <QuickTransaction wallet={wallet} />
         </div>
       </aside>
 

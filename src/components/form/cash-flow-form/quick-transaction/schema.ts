@@ -3,7 +3,7 @@ import { z } from "zod";
 // Helper to coerce string values (like "1.234,50" or "1000") to number robustly.
 // ActionInput format produces string like "1.234,50" when type="currency"
 // We need to parse that string into a number if it comes as a string.
-const currencySchema = z
+export const currencySchema = z
   .union([z.string(), z.number()])
   .transform((val) => {
     if (typeof val === "number") return val;

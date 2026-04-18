@@ -14,9 +14,16 @@ import {
   FormItem,
   FormControl,
   FormMessage,
+  FormLabel,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ActionInputProps, FormActionInputProps } from "./types";
-
 import { FieldValues } from "react-hook-form";
 import { Plus } from "lucide-react";
 
@@ -191,12 +198,52 @@ export function FormActionInput<T extends FieldValues>({
   name,
   ...props
 }: FormActionInputProps<T>) {
+  if (props.type === "day_picker") {
+    return (
+      <FormField
+        control={control}
+        name={name}
+        render={({ field }) => (
+          <FormItem className={cn("flex flex-col space-y-2", props.containerClassName)}>
+            {props.label && (
+              <FormLabel className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                {props.label}
+              </FormLabel>
+            )}
+            <Select
+              onValueChange={(val) => {
+                field.onChange(parseInt(val, 10));
+                // Simulate event
+                props.onChange?.({ target: { value: val } } as any);
+              }}
+              defaultValue={field.value?.toString()}
+            >
+              <FormControl>
+                <SelectTrigger className="w-full h-9 rounded-none border-zinc-200 dark:border-zinc-800 transition-all focus:ring-1 focus:ring-primary shadow-none">
+                  <SelectValue placeholder={props.placeholder || "Selecione o Dia"} />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                  <SelectItem key={day} value={day.toString()}>
+                    Dia {day}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    );
+  }
+
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem>
+        <FormItem className={props.containerClassName}>
           <FormControl>
             <ActionInput
               {...props}

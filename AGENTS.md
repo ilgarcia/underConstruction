@@ -49,11 +49,53 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **User Identity**: Mirror the NextAuth session identity (`id_user`, `ds_role`) in the Zustand `user-store.ts` for consistent and performant access throughout the platform.
 - **Server State**: Use React Query for server state management.
 
+### 3.1 Hook Conventions
+
+- **Co-location by domain (STRICT)**:
+  - Group all hooks related to the same domain into a **single file** inside `src/hooks/`.
+  - Example: `src/hooks/use-wallet.ts` exports both `useWalletInit` and `useWalletUpdate`.
+  - Do NOT split hooks into separate files (`use-wallet-init.ts` + `use-wallet-update.ts`) unless they are consumed by completely different parts of the app with no shared types.
+
+- **Single responsibility per hook**:
+  - Each exported hook function must have one clear purpose.
+  - ✅ `useWalletInit` — fetches or creates the wallet record on mount.
+  - ✅ `useWalletUpdate` — exposes an `updateBalance` action.
+  - ❌ A single `useWallet` hook that mixes lifecycle side-effects with mutation actions.
+
+- **Shared types live in the same file**:
+  - Export shared interfaces/types from the same domain file, not from a separate `types.ts`.
+  - Example: `WalletRecord` is exported from `use-wallet.ts` and imported wherever needed.
+
+- **Naming**:
+  - File: `kebab-case` → `use-wallet.ts`
+  - Functions: `camelCase` with `use` prefix → `useWalletInit`, `useWalletUpdate`
+  - Describe the **action**, not the file: prefer `useWalletInit` over `useWalletCreate`.
+
+- **Centralized exports (STRICT)**:
+  - Do NOT use `export` inline on declarations (`export function`, `export interface`, `export type`).
+  - All exports MUST be declared in a single block at the **bottom** of the file.
+  - Use `export type { }` for types and `export { }` for functions.
+  - Example:
+    ```ts
+    // Exports
+    export type { WalletRecord };
+    export { useWalletInit, useWalletUpdate };
+    ```
+
+
 ## 4. API Design
 
 - **REST API**: Use RESTful API design principles.
 - **Authentication**: Use JWT for authentication.
 - **Error Handling**: Return meaningful error messages.
+
+### 4.1 API Organization
+
+- **Route Grouping**: API routes MUST be grouped by the page/feature they belong to.
+  - Example: All APIs consumed by the `/cash-flow` page must be under `src/app/api/cash-flow/`.
+- **Function Isolation**: Inside the feature directory, separate routes by function or entity.
+  - ✅ `src/app/api/cash-flow/wallet/route.ts`
+  - ❌ `src/app/api/cash-flow/route.ts` (Don't clump unrelated actions in root feature files)
 
 ## 5. Testing
 
@@ -120,6 +162,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ```
 src/
 ├── app/              # Next.js app directory
+├── actions/          # Server Actions (centralized)
 ├── components/       # Reusable components
 ├── lib/              # Utility functions
 ├── hooks/            # Custom React hooks
@@ -129,6 +172,17 @@ src/
 ├── assets/           # Static assets
 └── styles/           # Global styles
 ```
+
+### Server Actions Convention
+
+- **Location (STRICT)**: All Server Actions MUST live in `src/actions/`, grouped by domain.
+  - ✅ `src/actions/wallet.ts`
+  - ❌ `src/app/(private)/cash-flow/actions.ts`
+- **File naming**: `kebab-case` matching the domain → `wallet.ts`, `transaction.ts`.
+- **Directive**: Every file in `src/actions/` MUST start with `"use server"`.
+- **Centralized exports**: Follow the same export pattern as hooks — no inline exports,
+  one `export { }` block at the bottom of the file.
+- **Client**: Use `supabaseAdmin` for server-side operations (bypasses RLS).
 
 ## 16. Best Practices
 

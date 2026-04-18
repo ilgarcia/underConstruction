@@ -13,54 +13,73 @@ import { Receivables } from "./receivables";
 import { QuickTransactionFormProps } from "./types";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Form } from "@/components/ui/form";
 import {
-  Form,
-} from "@/components/ui/form";
-import { quickTransactionSchema, QuickTransactionData, QuickTransactionInput } from "./schema";
-import { useQuickTransactionStore } from "@/store/quick-transaction-store";
+  quickTransactionSchema,
+  QuickTransactionData,
+  QuickTransactionInput,
+} from "./schema";
+import { useWalletUpdate } from "@/hooks/use-wallet";
+import { useReceivableCreate, useReceivableList } from "@/hooks/use-receivable";
+import { toast } from "sonner";
 
-/**
- * QuickTransaction - A scoped component for the Cash Flow functional area.
- * Manages four financial inputs with categorization support, using react-hook-form.
- */
-export function QuickTransaction({ className, labels }: QuickTransactionFormProps) {
+export function QuickTransaction({
+  className,
+  labels,
+  wallet,
+}: QuickTransactionFormProps) {
+  const { updateBalance } = useWalletUpdate();
+  const { createReceivable } = useReceivableCreate();
+  const { totalSum } = useReceivableList(wallet?.id_user_wallet);
   const [dialogConfig, setDialogConfig] = React.useState<{
     title: string;
     description?: React.ReactNode;
     content: React.ReactNode;
   } | null>(null);
 
-  const { initialData, setInitialData, syncExternalData } = useQuickTransactionStore();
+  const [initialData, setInitialData] =
+    React.useState<QuickTransactionData>({
+      balance: 0,
+      invoice: 0,
+      accounts: 0,
+      receivables: 0,
+    });
 
-  const form = useForm<QuickTransactionInput, any, QuickTransactionData>({
+  const form = useForm<
+    QuickTransactionInput,
+    undefined,
+    QuickTransactionData
+  >({
     resolver: zodResolver(quickTransactionSchema),
     defaultValues: initialData,
   });
 
-  // Watch for external data changes to react (if not dirty)
+  // Seed the balance field when the wallet record loads
   React.useEffect(() => {
-    if (!form.formState.isDirty) {
-      form.reset(initialData);
+    if (wallet) {
+      setInitialData((prev) => ({ ...prev, balance: wallet.vl_balance }));
     }
+  }, [wallet]);
+
+  React.useEffect(() => {
+    form.reset(initialData);
   }, [initialData, form]);
 
+  // Sincroniza a soma total dos recebíveis com o campo do formulário
+  React.useEffect(() => {
+    form.setValue("receivables", totalSum);
+  }, [totalSum, form]);
+
   const onSubmit = async (data: QuickTransactionData) => {
-    // Mock delay to simulate async save — remove when wiring real API
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    if (!wallet?.id_user_wallet) return;
 
-    console.log("Saving transaction data...", data);
-    setInitialData(data);
-    form.reset(data);
-
-    // Simulate updating external data
-    const backendData = { balance: data.balance + 10, invoice: data.invoice };
-    syncExternalData(backendData, form.formState.isDirty);
+    await updateBalance(wallet.id_user_wallet, data.balance);
   };
 
   const openDialog = (config: {
     title: string;
     description?: React.ReactNode;
-    content: React.ReactNode
+    content: React.ReactNode;
   }) => {
     setDialogConfig(config);
   };
@@ -74,6 +93,8 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
     accounts: labels?.accounts ?? "Contas",
   };
 
+  const { isSubmitting, dirtyFields } = form.formState;
+
   return (
     <div className={className}>
       <h3 className="text-lg font-bold mb-6 text-foreground uppercase tracking-tight">
@@ -81,7 +102,10 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
       </h3>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
           {/* 1. Saldo + Salvar */}
           <div className="grid grid-cols-12 gap-2 items-end">
             <div className="col-span-9">
@@ -96,8 +120,8 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
               <ActionButton
                 type="submit"
                 icon={<Save className="w-4 h-4" />}
-                loading={form.formState.isSubmitting}
-                disabled={!form.formState.dirtyFields.balance || form.formState.isSubmitting}
+                loading={isSubmitting}
+                disabled={!dirtyFields.balance || isSubmitting}
               />
             </div>
           </div>
@@ -110,18 +134,20 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
             type="currency"
             actionInput
             readOnlyInput
-            onAction={() => openDialog({
-              title: `Categorizar: ${fieldLabels.invoice}`,
-              content: (
-                <Category
-                  targetLabel={fieldLabels.invoice}
-                  onSubmit={(data) => {
-                    console.log("Fatura categorizada:", data);
-                    closeDialog();
-                  }}
-                />
-              )
-            })}
+            onAction={() =>
+              openDialog({
+                title: `Categorizar: ${fieldLabels.invoice}`,
+                content: (
+                  <Category
+                    targetLabel={fieldLabels.invoice}
+                    onSubmit={(data) => {
+                      console.log("Fatura categorizada:", data);
+                      closeDialog();
+                    }}
+                  />
+                ),
+              })
+            }
           />
 
           {/* 3. Contas (With button) */}
@@ -132,18 +158,20 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
             type="currency"
             actionInput
             readOnlyInput
-            onAction={() => openDialog({
-              title: `Categorizar: ${fieldLabels.accounts}`,
-              content: (
-                <Accounts
-                  targetLabel={fieldLabels.accounts}
-                  onSubmit={(data) => {
-                    console.log("Contas categorizadas:", data);
-                    closeDialog();
-                  }}
-                />
-              )
-            })}
+            onAction={() =>
+              openDialog({
+                title: `Categorizar: ${fieldLabels.accounts}`,
+                content: (
+                  <Accounts
+                    targetLabel={fieldLabels.accounts}
+                    onSubmit={(data) => {
+                      console.log("Contas categorizadas:", data);
+                      closeDialog();
+                    }}
+                  />
+                ),
+              })
+            }
           />
 
           {/* 4. Recebíveis (With button, readOnly input) */}
@@ -154,21 +182,37 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
             type="currency"
             actionInput
             readOnlyInput
-            onAction={() => openDialog({
-              title: `Categorizar: ${fieldLabels.receivables}`,
-              content: (
-                <Receivables
-                  targetLabel={fieldLabels.receivables}
-                  onSubmit={(data) => {
-                    console.log("Recebível categorizado:", data);
-                    closeDialog();
-                  }}
-                />
-              )
-            })}
+            onAction={() =>
+              openDialog({
+                title: `Categorizar: ${fieldLabels.receivables}`,
+                content: (
+                  <Receivables
+                    targetLabel={fieldLabels.receivables}
+                    idUserWallet={wallet?.id_user_wallet}
+                    onSubmit={async (data) => {
+                      if (!wallet?.id_user_wallet) {
+                        toast.error("Carteira não localizada.");
+                        return;
+                      }
+
+                      try {
+                        await createReceivable({
+                          id_user_wallet: wallet.id_user_wallet,
+                          ds_receivable: data.description,
+                          vl_receivable: data.value,
+                          vl_day_receivable: data.day_picker,
+                        });
+                        toast.success("Recebível cadastrado!");
+                        closeDialog();
+                      } catch (err: any) {
+                        toast.error(err.message || "Erro ao salvar recebível.");
+                      }
+                    }}
+                  />
+                ),
+              })
+            }
           />
-
-
         </form>
       </Form>
 
@@ -178,6 +222,7 @@ export function QuickTransaction({ className, labels }: QuickTransactionFormProp
         onOpenChange={(open) => !open && closeDialog()}
         title={dialogConfig?.title || ""}
         description={dialogConfig?.description}
+        className="md:min-w-4xl"
       >
         {dialogConfig?.content}
       </BaseDialog>

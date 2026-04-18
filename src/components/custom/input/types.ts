@@ -18,9 +18,9 @@ export interface ActionInputProps extends Omit<InputHTMLAttributes<HTMLInputElem
   prefix?: ReactNode;
   
   /**
-   * Type of the input. Supports standard types plus "currency".
+   * Type of the input. Supports standard types plus "currency" and "day_picker".
    */
-  type?: "text" | "currency" | string & {};
+  type?: "text" | "currency" | "day_picker" | string & {};
 
   /**
    * Maximum integer digits acceptable (if type="currency"), e.g., 10 for "9999999999,99".
