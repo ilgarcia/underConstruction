@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     .from("tbl_receivables")
     .select("*")
     .eq("id_user_wallet", id_user_wallet)
-    .order("vl_day_receivable", { ascending: true });
+    .order("vl_day", { ascending: true });
 
   if (error) {
     return NextResponse.json(
@@ -64,9 +64,9 @@ export async function POST(request: Request) {
       .insert(
         body.map((item: any) => ({
           id_user_wallet: item.id_user_wallet,
-          ds_receivable: item.ds_receivable,
-          vl_receivable: item.vl_receivable,
-          vl_day_receivable: item.vl_day_receivable,
+          ds_description: item.ds_description,
+          vl_amount: item.vl_amount,
+          vl_day: item.vl_day,
         })),
       )
       .select();
@@ -80,19 +80,18 @@ export async function POST(request: Request) {
 
     return NextResponse.json(data, { status: 201 });
   } else {
-    const { id_user_wallet, ds_receivable, vl_receivable, vl_day_receivable } =
-      body;
+    const { id_user_wallet, ds_description, vl_amount, vl_day } = body;
 
     if (
       !id_user_wallet ||
-      !ds_receivable ||
-      vl_receivable === undefined ||
-      vl_day_receivable === undefined
+      !ds_description ||
+      vl_amount === undefined ||
+      vl_day === undefined
     ) {
       return NextResponse.json(
         {
           error:
-            "id_user_wallet, ds_receivable, vl_receivable, and vl_day_receivable are required",
+            "id_user_wallet, ds_description, vl_amount, and vl_day are required",
         },
         { status: 400 },
       );
@@ -102,9 +101,9 @@ export async function POST(request: Request) {
       .from("tbl_receivables")
       .insert({
         id_user_wallet,
-        ds_receivable,
-        vl_receivable,
-        vl_day_receivable,
+        ds_description,
+        vl_amount,
+        vl_day,
       })
       .select()
       .single();
@@ -168,13 +167,12 @@ export async function PATCH(request: Request) {
 
   const body = (await request.json()) as {
     id_receivable: string;
-    ds_receivable?: string;
-    vl_receivable?: number;
-    vl_day_receivable?: number;
+    ds_description?: string;
+    vl_amount?: number;
+    vl_day?: number;
   };
 
-  const { id_receivable, ds_receivable, vl_receivable, vl_day_receivable } =
-    body;
+  const { id_receivable, ds_description, vl_amount, vl_day } = body;
 
   if (!id_receivable) {
     return NextResponse.json(
@@ -186,9 +184,9 @@ export async function PATCH(request: Request) {
   const { data, error } = await supabaseAdmin
     .from("tbl_receivables")
     .update({
-      ds_receivable,
-      vl_receivable,
-      vl_day_receivable,
+      ds_description,
+      vl_amount,
+      vl_day,
       dt_updated: new Date().toISOString(),
     })
     .eq("id_receivable", id_receivable)

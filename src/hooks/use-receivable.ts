@@ -1,47 +1,26 @@
 import { useState, useEffect } from "react";
 import { useReceivableStore } from "@/store/receivable-store";
+import { BaseTransactionRecord, CreateTransactionParams } from "@/store/transaction-factory";
 
-interface ReceivableRecord {
+export interface ReceivableRecord extends BaseTransactionRecord {
   id_receivable: string;
-  id_user_wallet: string;
-  ds_receivable: string;
-  vl_receivable: number;
-  vl_day_receivable: number;
-  dt_created: string;
-  dt_updated: string;
 }
 
 interface UseReceivableCreateResult {
   isCreating: boolean;
   error: string | null;
-  createReceivable: (params: {
-    id_user_wallet: string;
-    ds_receivable: string;
-    vl_receivable: number;
-    vl_day_receivable: number;
-  } | Array<{
-    id_user_wallet: string;
-    ds_receivable: string;
-    vl_receivable: number;
-    vl_day_receivable: number;
-  }>) => Promise<ReceivableRecord | ReceivableRecord[]>;
+  createReceivable: (
+    params: CreateTransactionParams | CreateTransactionParams[]
+  ) => Promise<ReceivableRecord | ReceivableRecord[]>;
 }
 
 function useReceivableCreate(): UseReceivableCreateResult {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createReceivable = async (params: {
-    id_user_wallet: string;
-    ds_receivable: string;
-    vl_receivable: number;
-    vl_day_receivable: number;
-  } | Array<{
-    id_user_wallet: string;
-    ds_receivable: string;
-    vl_receivable: number;
-    vl_day_receivable: number;
-  }>): Promise<ReceivableRecord | ReceivableRecord[]> => {
+  const createReceivable = async (
+    params: CreateTransactionParams | CreateTransactionParams[]
+  ): Promise<ReceivableRecord | ReceivableRecord[]> => {
     setIsCreating(true);
     setError(null);
 
@@ -110,9 +89,9 @@ interface UseReceivableUpdateResult {
   error: string | null;
   updateReceivable: (params: {
     id_receivable: string;
-    ds_receivable?: string;
-    vl_receivable?: number;
-    vl_day_receivable?: number;
+    ds_description?: string;
+    vl_amount?: number;
+    vl_day?: number;
   }) => Promise<ReceivableRecord>;
 }
 
@@ -122,9 +101,9 @@ function useReceivableUpdate(): UseReceivableUpdateResult {
 
   const updateReceivable = async (params: {
     id_receivable: string;
-    ds_receivable?: string;
-    vl_receivable?: number;
-    vl_day_receivable?: number;
+    ds_description?: string;
+    vl_amount?: number;
+    vl_day?: number;
   }): Promise<ReceivableRecord> => {
     setIsUpdating(true);
     setError(null);
@@ -161,8 +140,11 @@ interface UseReceivableListResult {
   refresh: () => Promise<void>;
 }
 
-function useReceivableList(id_user_wallet: string | undefined): UseReceivableListResult {
-  const { receivables, totalSum, isLoading, error, fetchReceivables } = useReceivableStore();
+function useReceivableList(
+  id_user_wallet: string | undefined,
+): UseReceivableListResult {
+  const { items: receivables, totalSum, isLoading, error, fetchItems: fetchReceivables } =
+    useReceivableStore();
 
   useEffect(() => {
     if (id_user_wallet) {
@@ -170,14 +152,19 @@ function useReceivableList(id_user_wallet: string | undefined): UseReceivableLis
     }
   }, [id_user_wallet, fetchReceivables]);
 
-  return { 
-    receivables, 
+  return {
+    receivables,
     totalSum,
-    isLoading, 
-    error, 
-    refresh: () => id_user_wallet ? fetchReceivables(id_user_wallet) : Promise.resolve() 
+    isLoading,
+    error,
+    refresh: () =>
+      id_user_wallet ? fetchReceivables(id_user_wallet) : Promise.resolve(),
   };
 }
 
-export type { ReceivableRecord };
-export { useReceivableCreate, useReceivableList, useReceivableDelete, useReceivableUpdate };
+export {
+  useReceivableCreate,
+  useReceivableList,
+  useReceivableDelete,
+  useReceivableUpdate,
+};

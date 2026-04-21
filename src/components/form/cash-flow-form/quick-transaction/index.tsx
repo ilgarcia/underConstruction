@@ -6,8 +6,8 @@ import {
   ActionButton,
 } from "@/components/custom";
 import { Save } from "lucide-react";
-import { Category } from "./category";
-import { Accounts } from "./accounts";
+import { Category } from "./card-invoices";
+import { Expenses } from "./expenses";
 import { Receivables } from "./receivables";
 import { QuickTransactionFormProps } from "./types";
 import { useForm } from "react-hook-form";
@@ -19,29 +19,20 @@ import {
   QuickTransactionInput,
 } from "./schema";
 import { useWalletUpdate } from "@/hooks/use-wallet";
-import { useReceivableCreate, useReceivableList } from "@/hooks/use-receivable";
+import { useReceivableList } from "@/hooks/use-receivable";
+import { useExpensesList } from "@/hooks/use-expenses";
 
 export function QuickTransaction({
-  className,
-  labels,
   wallet,
 }: QuickTransactionFormProps) {
   const { updateBalance } = useWalletUpdate();
-  const { createReceivable } = useReceivableCreate();
-  const { totalSum } = useReceivableList(wallet?.id_user_wallet);
+  const { totalSum: totalReceivables } = useReceivableList(wallet?.id_user_wallet);
+  const { totalSum: totalExpenses } = useExpensesList(wallet?.id_user_wallet);
   const [dialogConfig, setDialogConfig] = React.useState<{
     title: string;
     description?: React.ReactNode;
     content: React.ReactNode;
   } | null>(null);
-
-  const [initialData, setInitialData] =
-    React.useState<QuickTransactionData>({
-      balance: 0,
-      invoice: 0,
-      accounts: 0,
-      receivables: 0,
-    });
 
   const form = useForm<
     QuickTransactionInput,
@@ -49,24 +40,24 @@ export function QuickTransaction({
     QuickTransactionData
   >({
     resolver: zodResolver(quickTransactionSchema),
-    defaultValues: initialData,
+    defaultValues: { balance: 0, invoice: 0, expenses: 0, receivables: 0 },
   });
 
-  // Seed the balance field when the wallet record loads
+  // Atualiza apenas o saldo quando a carteira carregar da API
   React.useEffect(() => {
-    if (wallet) {
-      setInitialData((prev) => ({ ...prev, balance: wallet.vl_balance }));
+    if (wallet?.vl_balance !== undefined) {
+      form.setValue("balance", wallet.vl_balance);
     }
-  }, [wallet]);
+  }, [wallet?.vl_balance, form]);
+
+  // Sincronizam as somas totais do Zustand (calculadas globalmente) direto nos inputs em tempo real
+  React.useEffect(() => {
+    form.setValue("receivables", totalReceivables);
+  }, [totalReceivables, form]);
 
   React.useEffect(() => {
-    form.reset(initialData);
-  }, [initialData, form]);
-
-  // Sincroniza a soma total dos recebíveis com o campo do formulário
-  React.useEffect(() => {
-    form.setValue("receivables", totalSum);
-  }, [totalSum, form]);
+    form.setValue("expenses", totalExpenses);
+  }, [totalExpenses, form]);
 
   const onSubmit = async (data: QuickTransactionData) => {
     if (!wallet?.id_user_wallet) return;
@@ -85,16 +76,16 @@ export function QuickTransaction({
   const closeDialog = () => setDialogConfig(null);
 
   const fieldLabels = {
-    balance: labels?.balance ?? "Saldo",
-    receivables: labels?.receivables ?? "Recebíveis",
-    invoice: labels?.invoice ?? "Fatura",
-    accounts: labels?.accounts ?? "Contas",
+    balance: "Saldo",
+    receivables: "Recebíveis",
+    invoice: "Fatura",
+    expenses: "Contas",
   };
 
   const { isSubmitting, dirtyFields } = form.formState;
 
   return (
-    <div className={className}>
+    <div>
       <h3 className="text-lg font-bold mb-6 text-foreground uppercase tracking-tight">
         Lançamentos Rápidos
       </h3>
@@ -151,20 +142,20 @@ export function QuickTransaction({
           {/* 3. Contas (With button) */}
           <Input
             control={form.control}
-            name="accounts"
-            label={fieldLabels.accounts}
+            name="expenses"
+            label={fieldLabels.expenses}
             type="currency"
             actionInput
             readOnlyInput
             onAction={() =>
               openDialog({
-                title: `Categorizar: ${fieldLabels.accounts}`,
+                title: `Categorizar: ${fieldLabels.expenses}`,
                 content: (
-                  <Accounts
-                    targetLabel={fieldLabels.accounts}
+                  <Expenses
+                    targetLabel={fieldLabels.expenses}
+                    idUserWallet={wallet?.id_user_wallet}
                     onSubmit={(data) => {
-                      console.log("Contas categorizadas:", data);
-                      closeDialog();
+                      // Logica cash-flow-chart
                     }}
                   />
                 ),
@@ -189,8 +180,7 @@ export function QuickTransaction({
                     idUserWallet={wallet?.id_user_wallet}
                     onClose={closeDialog}
                     onSubmit={async (data) => {
-                      // Receivables component now handles its own creation/refresh.
-                      // We can add logic here if the parent needs to sync something else.
+                      // Logica cash-flow-chart
                     }}
                   />
                 ),

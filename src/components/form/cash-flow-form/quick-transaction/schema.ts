@@ -4,7 +4,7 @@ import { createCurrencySchema } from "@/helpers/currency";
 export const quickTransactionSchema = z.object({
   balance: createCurrencySchema(),
   invoice: createCurrencySchema(),
-  accounts: createCurrencySchema().optional(),
+  expenses: createCurrencySchema().optional(),
   receivables: createCurrencySchema().optional(),
 });
 
