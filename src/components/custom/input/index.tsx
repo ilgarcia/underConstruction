@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/select";
 import { ActionInputProps, FormActionInputProps } from "./types";
 import { FieldValues } from "react-hook-form";
-import { Plus } from "lucide-react";
+import { Plus, Save } from "lucide-react";
+import { ActionButton } from "../buttons/action-button";
 
 /**
  * Helper to extract value safely from React input props (which could be string[])
@@ -50,6 +51,8 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
       onAction,
       actionInput = false,
       showButton = false,
+      rightAction,
+      submitProps,
       onChange,
       defaultValue,
       value,
@@ -65,6 +68,15 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
     const displayPrefix = isCurrency ? "R$" : prefix;
     const placeholder = passedPlaceholder ?? (isCurrency ? "0,00" : undefined);
     const hasButton = actionInput || (showButton && (actionLabel || actionIcon || onAction));
+
+    const finalRightAction = rightAction || (submitProps && (
+      <ActionButton
+        type="submit"
+        icon={<Save className="w-4 h-4" />}
+        loading={submitProps.loading}
+        disabled={submitProps.disabled}
+      />
+    ));
 
     // Initial formatting logic for financial values
     const formatCurrency = (valRaw: string | number) => {
@@ -136,53 +148,58 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
             {label}
           </Label>
         )}
-        <InputGroup
-          className={cn(
-            "rounded-none h-9 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/50 transition-all duration-200",
-            "focus-within:border-primary focus-within:ring-1 focus-within:ring-primary shadow-none"
-          )}
-        >
-          {displayPrefix && (
-            <InputGroupAddon
-              className="rounded-none h-full border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 text-zinc-500 font-medium group-focus-within/input-group:border-primary"
-            >
-              {displayPrefix}
-            </InputGroupAddon>
-          )}
-
-          <InputGroupInput
-            ref={ref}
-            id={id}
-            value={val}
-            onChange={handleChange}
-            readOnly={readOnlyInput}
-            type={type === "currency" ? "text" : type}
-            placeholder={placeholder}
-            className={cn(
-              "rounded-none h-full text-sm placeholder:text-zinc-500 border-0 focus-visible:ring-0",
-              readOnlyInput && "cursor-default bg-muted dark:bg-muted/60 text-muted-foreground",
-              className
-            )}
-            {...props}
-          />
-
-          {hasButton && (
-            <InputGroupButton
-              variant="secondary"
-              onClick={onAction}
-              className="rounded-none h-full border-l border-zinc-200 dark:border-zinc-800 px-4 font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group-focus-within/input-group:border-primary"
-            >
-              {actionInput ? (
-                <Plus className="w-4 h-4" />
-              ) : (
-                <>
-                  {actionIcon && <span className="shrink-0">{actionIcon}</span>}
-                  {actionLabel && <span>{actionLabel}</span>}
-                </>
+        <div className={cn(finalRightAction ? "grid grid-cols-12 gap-2 items-end" : "")}>
+          <div className={cn(finalRightAction ? "col-span-9" : "w-full")}>
+            <InputGroup
+              className={cn(
+                "rounded-none h-9 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/50 transition-all duration-200",
+                "focus-within:border-primary focus-within:ring-1 focus-within:ring-primary shadow-none"
               )}
-            </InputGroupButton>
-          )}
-        </InputGroup>
+            >
+              {displayPrefix && (
+                <InputGroupAddon
+                  className="rounded-none h-full border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-3 text-zinc-500 font-medium group-focus-within/input-group:border-primary"
+                >
+                  {displayPrefix}
+                </InputGroupAddon>
+              )}
+
+              <InputGroupInput
+                ref={ref}
+                id={id}
+                value={val}
+                onChange={handleChange}
+                readOnly={readOnlyInput}
+                type={type === "currency" ? "text" : type}
+                placeholder={placeholder}
+                className={cn(
+                  "rounded-none h-full text-sm placeholder:text-zinc-500 border-0 focus-visible:ring-0",
+                  readOnlyInput && "cursor-default bg-muted dark:bg-muted/60 text-muted-foreground",
+                  className
+                )}
+                {...props}
+              />
+
+              {hasButton && (
+                <InputGroupButton
+                  variant="secondary"
+                  onClick={onAction}
+                  className="rounded-none h-full border-l border-zinc-200 dark:border-zinc-800 px-4 font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group-focus-within/input-group:border-primary"
+                >
+                  {actionInput ? (
+                    <Plus className="w-4 h-4" />
+                  ) : (
+                    <>
+                      {actionIcon && <span className="shrink-0">{actionIcon}</span>}
+                      {actionLabel && <span>{actionLabel}</span>}
+                    </>
+                  )}
+                </InputGroupButton>
+              )}
+            </InputGroup>
+          </div>
+          {finalRightAction && <div className="col-span-3">{finalRightAction}</div>}
+        </div>
       </div>
     );
   }

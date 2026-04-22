@@ -44,5 +44,18 @@ function createCurrencySchema({
     );
 }
 
+/**
+ * Formats a number as a Brazilian real (BRL) currency string.
+ *
+ * @param value - The numeric value to format
+ * @returns A formatted currency string (e.g., "R$ 1.234,50")
+ */
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
+}
+
 // Exports
-export { createCurrencySchema };
+export { createCurrencySchema, formatCurrency };

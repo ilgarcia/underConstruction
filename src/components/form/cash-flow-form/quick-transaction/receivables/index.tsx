@@ -1,31 +1,17 @@
 import { ReceivablesFormProps } from "./types";
-import {
-  useReceivableList,
-  useReceivableDelete,
-  useReceivableCreate,
-  useReceivableUpdate,
-} from "@/hooks/use-receivable";
-import { TransactionManager } from "@/components/custom/transaction-manager";
+import { useReceivablesManager } from "@/hooks";
+import { TransactionManager } from "@/components/form/cash-flow-form/quick-transaction/transaction-manager";
 
-export function Receivables({ targetLabel, idUserWallet, onSubmit, onClose }: ReceivablesFormProps) {
-  const { receivables, isLoading, refresh } = useReceivableList(idUserWallet);
-  const { deleteReceivables } = useReceivableDelete();
-  const { createReceivable } = useReceivableCreate();
-  const { updateReceivable } = useReceivableUpdate();
+export function Receivables({ targetLabel, idUserWallet, onSubmit, onEditChange }: ReceivablesFormProps) {
+  const manager = useReceivablesManager(idUserWallet);
 
   return (
     <TransactionManager
       targetLabel={targetLabel || "Recebíveis"}
-      idUserWallet={idUserWallet}
       idKey="id_receivable"
-      items={receivables}
-      isLoading={isLoading}
-      refresh={refresh}
-      onCreate={createReceivable}
-      onUpdate={updateReceivable}
-      onDelete={deleteReceivables}
+      manager={manager}
       onSubmit={onSubmit}
-      onClose={onClose}
+      onEditChange={onEditChange}
     />
   );
 }

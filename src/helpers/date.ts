@@ -29,5 +29,17 @@ function formatDateShort(date: Date): string {
   });
 }
 
+/**
+ * Returns today's date formatted to Brazilian Portuguese (pt-BR).
+ *
+ * @param options - Custom Intl.DateTimeFormatOptions
+ * @returns Formatted date string for today
+ */
+function getTodayFormatted(
+  options?: Intl.DateTimeFormatOptions
+): string {
+  return formatDate(new Date(), options);
+}
+
 // Exports
-export { formatDate, formatDateShort };
+export { formatDate, formatDateShort, getTodayFormatted };

@@ -1,33 +1,31 @@
 import { ReactNode } from "react";
 
+export interface EditModeConfig {
+  isEditing: boolean;
+  itemName?: string;
+  onCancel: () => void;
+}
+
 export interface BaseDialogProps {
-  /**
-   * Title of the dialog.
-   */
-  title: string;
-  
-  /**
-   * Optional description for the dialog.
-   */
+  title?: string;
+  hideHeader?: boolean;
   description?: ReactNode;
-  
-  /**
-   * Whether the dialog is open.
-   */
-  isOpen: boolean;
-  
-  /**
-   * Callback when the open state changes.
-   */
-  onOpenChange: (open: boolean) => void;
-  
-  /**
-   * The content (form) to be displayed inside the dialog.
-   */
-  children: ReactNode;
-  
-  /**
-   * Optional additional class names for the dialog content.
-   */
-  className?: string;
+  headerAction?: ReactNode;
+  subtitleNode?: ReactNode;
+  isOpen?: boolean;
+  children?: ReactNode;
+  onOpenChange?: (open: boolean) => void;
+  onClose?: () => void;
+  editMode?: EditModeConfig;
+  config?: DialogConfig | null;
+}
+
+export interface DialogConfig {
+  title: string;
+  description?: ReactNode;
+  content: ReactNode;
+  hideHeader?: boolean;
+  subtitleNode?: ReactNode;
+  headerAction?: ReactNode;
+  editMode?: EditModeConfig;
 }

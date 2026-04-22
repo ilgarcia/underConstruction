@@ -1,25 +1,21 @@
 import { useState, useEffect } from "react";
 import { useExpensesStore } from "@/store/expenses-store";
-import { BaseTransactionRecord, CreateTransactionParams } from "@/store/transaction-factory";
-
-export interface ExpensesRecord extends BaseTransactionRecord {
-  id_expense: string;
-}
-
-interface UseExpensesCreateResult {
-  isCreating: boolean;
-  error: string | null;
-  createExpenses: (
-    params: CreateTransactionParams | CreateTransactionParams[]
-  ) => Promise<ExpensesRecord | ExpensesRecord[]>;
-}
+import type { CreateTransactionParams } from "@/store/transaction-factory";
+import type {
+  ExpensesRecord,
+  UseExpensesCreateResult,
+  UseExpensesDeleteResult,
+  UseExpensesUpdateResult,
+  UseExpensesListResult,
+  UseExpensesManagerResult,
+} from "./types";
 
 function useExpensesCreate(): UseExpensesCreateResult {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const createExpenses = async (
-    params: CreateTransactionParams | CreateTransactionParams[]
+    params: CreateTransactionParams | CreateTransactionParams[],
   ): Promise<ExpensesRecord | ExpensesRecord[]> => {
     setIsCreating(true);
     setError(null);
@@ -46,12 +42,6 @@ function useExpensesCreate(): UseExpensesCreateResult {
   };
 
   return { isCreating, error, createExpenses };
-}
-
-interface UseExpensesDeleteResult {
-  isDeleting: boolean;
-  error: string | null;
-  deleteExpenses: (ids: string[]) => Promise<void>;
 }
 
 function useExpensesDelete(): UseExpensesDeleteResult {
@@ -82,17 +72,6 @@ function useExpensesDelete(): UseExpensesDeleteResult {
   };
 
   return { isDeleting, error, deleteExpenses };
-}
-
-interface UseExpensesUpdateResult {
-  isUpdating: boolean;
-  error: string | null;
-  updateExpenses: (params: {
-    id_expense: string;
-    ds_description?: string;
-    vl_amount?: number;
-    vl_day?: number;
-  }) => Promise<ExpensesRecord>;
 }
 
 function useExpensesUpdate(): UseExpensesUpdateResult {
@@ -132,19 +111,14 @@ function useExpensesUpdate(): UseExpensesUpdateResult {
   return { isUpdating, error, updateExpenses };
 }
 
-interface UseExpensesListResult {
-  expenses: ExpensesRecord[];
-  totalSum: number;
-  isLoading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
-}
-
-function useExpensesList(
-  id_user_wallet: string | undefined,
-): UseExpensesListResult {
-  const { items: expenses, totalSum, isLoading, error, fetchItems: fetchExpenses } =
-    useExpensesStore();
+function useExpensesList(id_user_wallet: string | undefined): UseExpensesListResult {
+  const {
+    items: expenses,
+    totalSum,
+    isLoading,
+    error,
+    fetchItems: fetchExpenses,
+  } = useExpensesStore();
 
   useEffect(() => {
     if (id_user_wallet) {
@@ -157,14 +131,42 @@ function useExpensesList(
     totalSum,
     isLoading,
     error,
-    refresh: () =>
-      id_user_wallet ? fetchExpenses(id_user_wallet) : Promise.resolve(),
+    refresh: () => (id_user_wallet ? fetchExpenses(id_user_wallet) : Promise.resolve()),
   };
 }
 
+function useExpensesManager(id_user_wallet: string | undefined): UseExpensesManagerResult {
+  const { expenses: items, isLoading, refresh } = useExpensesList(id_user_wallet);
+  const { createExpenses: onCreate } = useExpensesCreate();
+  const { updateExpenses: onUpdate } = useExpensesUpdate();
+  const { deleteExpenses: onDelete } = useExpensesDelete();
+
+  return {
+    items,
+    isLoading,
+    refresh,
+    onCreate,
+    onUpdate,
+    onDelete,
+    idUserWallet: id_user_wallet,
+  };
+}
+
+// Re-export types
+export type {
+  ExpensesRecord,
+  UseExpensesCreateResult,
+  UseExpensesDeleteResult,
+  UseExpensesUpdateResult,
+  UseExpensesListResult,
+  UseExpensesManagerResult,
+} from "./types";
+
+// Internal exports
 export {
   useExpensesCreate,
   useExpensesList,
   useExpensesDelete,
   useExpensesUpdate,
+  useExpensesManager,
 };

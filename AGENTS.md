@@ -51,34 +51,37 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ### 3.1 Hook Conventions
 
-- **Co-location by domain (STRICT)**:
-  - Group all hooks related to the same domain into a **single file** inside `src/hooks/`.
-  - Example: `src/hooks/use-wallet.ts` exports both `useWalletInit` and `useWalletUpdate`.
-  - Do NOT split hooks into separate files (`use-wallet-init.ts` + `use-wallet-update.ts`) unless they are consumed by completely different parts of the app with no shared types.
+- **Modularization by domain (STRICT)**:
+  - Group all hooks related to the same domain into a dedicated directory inside `src/hooks/`.
+  - Inside each directory, use `index.ts` for logic and `types.ts` for types.
+  - Example: `src/hooks/wallet/` contains `index.ts` and `types.ts`.
 
 - **Single responsibility per hook**:
   - Each exported hook function must have one clear purpose.
   - ✅ `useWalletInit` — fetches or creates the wallet record on mount.
   - ✅ `useWalletUpdate` — exposes an `updateBalance` action.
-  - ❌ A single `useWallet` hook that mixes lifecycle side-effects with mutation actions.
 
-- **Shared types live in the same file**:
-  - Export shared interfaces/types from the same domain file, not from a separate `types.ts`.
-  - Example: `WalletRecord` is exported from `use-wallet.ts` and imported wherever needed.
+- **Types separation**:
+  - Export interfaces/types from a dedicated `types.ts` within the domain folder.
+  - Re-export these types from the domain's `index.ts` for easier consumption.
+
+- **Centralized Barrel Export (STRICT)**:
+  - A barrel file `src/hooks/index.ts` MUST re-export all domain hooks and types.
+  - This allows imports from `@/hooks` instead of specific file paths.
 
 - **Naming**:
-  - File: `kebab-case` → `use-wallet.ts`
-  - Functions: `camelCase` with `use` prefix → `useWalletInit`, `useWalletUpdate`
-  - Describe the **action**, not the file: prefer `useWalletInit` over `useWalletCreate`.
+  - Directory: `kebab-case` → `src/hooks/wallet/`.
+  - Functions: `camelCase` with `use` prefix → `useWalletInit`, `useWalletUpdate`.
 
-- **Centralized exports (STRICT)**:
-  - Do NOT use `export` inline on declarations (`export function`, `export interface`, `export type`).
+- **Export block pattern**:
   - All exports MUST be declared in a single block at the **bottom** of the file.
   - Use `export type { }` for types and `export { }` for functions.
-  - Example:
+  - Example (domain `index.ts`):
     ```ts
-    // Exports
-    export type { WalletRecord };
+    // Re-export types
+    export type { WalletRecord } from "./types";
+    
+    // Internal exports
     export { useWalletInit, useWalletUpdate };
     ```
 

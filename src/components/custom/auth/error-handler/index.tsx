@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -16,7 +15,6 @@ function AuthErrorContent() {
         duration: 5000,
       });
 
-      // Limpar o parâmetro da URL de forma limpa
       const newUrl = window.location.pathname;
       router.replace(newUrl);
     }

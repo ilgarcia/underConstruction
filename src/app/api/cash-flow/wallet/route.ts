@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getRequiredSession } from "@/lib/api-auth";
 
 /**
  * GET /api/cash-flow
@@ -9,11 +8,8 @@ import { supabaseAdmin } from "@/lib/supabase";
  * Creates one with vl_balance = 0 if it doesn't exist.
  */
 async function GET() {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id_user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { session, response } = await getRequiredSession();
+  if (response) return response;
 
   const id_user = session.user.id_user;
 
@@ -57,11 +53,8 @@ async function GET() {
  * Body: { id_user_wallet: string; vl_balance: number }
  */
 async function PATCH(request: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id_user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { response } = await getRequiredSession();
+  if (response) return response;
 
   const body = await request.json() as {
     id_user_wallet: string;

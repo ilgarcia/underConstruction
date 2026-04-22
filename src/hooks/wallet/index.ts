@@ -1,19 +1,7 @@
 import { useEffect, useState } from "react";
 import { useUserStore } from "@/store/user-store";
+import type { WalletRecord, UseWalletInitResult, UseWalletUpdateResult } from "./types";
 
-interface WalletRecord {
-  id_user_wallet: string;
-  id_user: string;
-  vl_balance: number;
-  dt_created: string;
-  dt_updated: string;
-}
-
-interface UseWalletInitResult {
-  wallet: WalletRecord | null;
-  isLoading: boolean;
-  error: string | null;
-}
 function useWalletInit(): UseWalletInitResult {
   const isLoaded = useUserStore((state) => state.isLoaded);
 
@@ -64,20 +52,11 @@ function useWalletInit(): UseWalletInitResult {
   return { wallet, isLoading, error };
 }
 
-interface UseWalletUpdateResult {
-  isUpdating: boolean;
-  error: string | null;
-  updateBalance: (id_user_wallet: string, vl_balance: number) => Promise<void>;
-}
-
 function useWalletUpdate(): UseWalletUpdateResult {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateBalance = async (
-    id_user_wallet: string,
-    vl_balance: number,
-  ): Promise<void> => {
+  const updateBalance = async (id_user_wallet: string, vl_balance: number): Promise<void> => {
     setIsUpdating(true);
     setError(null);
 
@@ -103,5 +82,8 @@ function useWalletUpdate(): UseWalletUpdateResult {
   return { isUpdating, error, updateBalance };
 }
 
-export type { WalletRecord };
+// Re-export types
+export type { WalletRecord, UseWalletInitResult, UseWalletUpdateResult } from "./types";
+
+// Internal exports
 export { useWalletInit, useWalletUpdate };

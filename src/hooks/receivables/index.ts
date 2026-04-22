@@ -1,25 +1,21 @@
 import { useState, useEffect } from "react";
 import { useReceivableStore } from "@/store/receivable-store";
-import { BaseTransactionRecord, CreateTransactionParams } from "@/store/transaction-factory";
-
-export interface ReceivableRecord extends BaseTransactionRecord {
-  id_receivable: string;
-}
-
-interface UseReceivableCreateResult {
-  isCreating: boolean;
-  error: string | null;
-  createReceivable: (
-    params: CreateTransactionParams | CreateTransactionParams[]
-  ) => Promise<ReceivableRecord | ReceivableRecord[]>;
-}
+import type { CreateTransactionParams } from "@/store/transaction-factory";
+import type {
+  ReceivableRecord,
+  UseReceivableCreateResult,
+  UseReceivableDeleteResult,
+  UseReceivableUpdateResult,
+  UseReceivableListResult,
+  UseReceivablesManagerResult,
+} from "./types";
 
 function useReceivableCreate(): UseReceivableCreateResult {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const createReceivable = async (
-    params: CreateTransactionParams | CreateTransactionParams[]
+    params: CreateTransactionParams | CreateTransactionParams[],
   ): Promise<ReceivableRecord | ReceivableRecord[]> => {
     setIsCreating(true);
     setError(null);
@@ -46,12 +42,6 @@ function useReceivableCreate(): UseReceivableCreateResult {
   };
 
   return { isCreating, error, createReceivable };
-}
-
-interface UseReceivableDeleteResult {
-  isDeleting: boolean;
-  error: string | null;
-  deleteReceivables: (ids: string[]) => Promise<void>;
 }
 
 function useReceivableDelete(): UseReceivableDeleteResult {
@@ -82,17 +72,6 @@ function useReceivableDelete(): UseReceivableDeleteResult {
   };
 
   return { isDeleting, error, deleteReceivables };
-}
-
-interface UseReceivableUpdateResult {
-  isUpdating: boolean;
-  error: string | null;
-  updateReceivable: (params: {
-    id_receivable: string;
-    ds_description?: string;
-    vl_amount?: number;
-    vl_day?: number;
-  }) => Promise<ReceivableRecord>;
 }
 
 function useReceivableUpdate(): UseReceivableUpdateResult {
@@ -132,19 +111,14 @@ function useReceivableUpdate(): UseReceivableUpdateResult {
   return { isUpdating, error, updateReceivable };
 }
 
-interface UseReceivableListResult {
-  receivables: ReceivableRecord[];
-  totalSum: number;
-  isLoading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
-}
-
-function useReceivableList(
-  id_user_wallet: string | undefined,
-): UseReceivableListResult {
-  const { items: receivables, totalSum, isLoading, error, fetchItems: fetchReceivables } =
-    useReceivableStore();
+function useReceivableList(id_user_wallet: string | undefined): UseReceivableListResult {
+  const {
+    items: receivables,
+    totalSum,
+    isLoading,
+    error,
+    fetchItems: fetchReceivables,
+  } = useReceivableStore();
 
   useEffect(() => {
     if (id_user_wallet) {
@@ -157,14 +131,42 @@ function useReceivableList(
     totalSum,
     isLoading,
     error,
-    refresh: () =>
-      id_user_wallet ? fetchReceivables(id_user_wallet) : Promise.resolve(),
+    refresh: () => (id_user_wallet ? fetchReceivables(id_user_wallet) : Promise.resolve()),
   };
 }
 
+function useReceivablesManager(id_user_wallet: string | undefined): UseReceivablesManagerResult {
+  const { receivables: items, isLoading, refresh } = useReceivableList(id_user_wallet);
+  const { createReceivable: onCreate } = useReceivableCreate();
+  const { updateReceivable: onUpdate } = useReceivableUpdate();
+  const { deleteReceivables: onDelete } = useReceivableDelete();
+
+  return {
+    items,
+    isLoading,
+    refresh,
+    onCreate,
+    onUpdate,
+    onDelete,
+    idUserWallet: id_user_wallet,
+  };
+}
+
+// Re-export types
+export type {
+  ReceivableRecord,
+  UseReceivableCreateResult,
+  UseReceivableDeleteResult,
+  UseReceivableUpdateResult,
+  UseReceivableListResult,
+  UseReceivablesManagerResult,
+} from "./types";
+
+// Internal exports
 export {
   useReceivableCreate,
   useReceivableList,
   useReceivableDelete,
   useReceivableUpdate,
+  useReceivablesManager,
 };

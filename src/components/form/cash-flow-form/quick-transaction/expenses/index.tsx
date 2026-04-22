@@ -1,31 +1,17 @@
 import { ExpensesFormProps } from "./types";
-import {
-  useExpensesList,
-  useExpensesDelete,
-  useExpensesCreate,
-  useExpensesUpdate,
-} from "@/hooks/use-expenses";
-import { TransactionManager } from "@/components/custom/transaction-manager";
+import { useExpensesManager } from "@/hooks";
+import { TransactionManager } from "@/components/form/cash-flow-form/quick-transaction/transaction-manager";
 
-export function Expenses({ targetLabel, idUserWallet, onSubmit, onClose }: ExpensesFormProps) {
-  const { expenses, isLoading, refresh } = useExpensesList(idUserWallet);
-  const { deleteExpenses } = useExpensesDelete();
-  const { createExpenses } = useExpensesCreate();
-  const { updateExpenses } = useExpensesUpdate();
+export function Expenses({ targetLabel, idUserWallet, onSubmit, onEditChange }: ExpensesFormProps) {
+  const manager = useExpensesManager(idUserWallet);
 
   return (
     <TransactionManager
       targetLabel={targetLabel || "Despesas"}
-      idUserWallet={idUserWallet}
       idKey="id_expense"
-      items={expenses}
-      isLoading={isLoading}
-      refresh={refresh}
-      onCreate={createExpenses}
-      onUpdate={updateExpenses}
-      onDelete={deleteExpenses}
+      manager={manager}
       onSubmit={onSubmit}
-      onClose={onClose}
+      onEditChange={onEditChange}
     />
   );
 }

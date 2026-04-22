@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getRequiredSession } from "@/lib/api-auth";
 
 /**
  * GET /api/cash-flow/expenses
  * Fetches expenses records by wallet id.
  */
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id_user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { response } = await getRequiredSession();
+  if (response) return response;
 
   const { searchParams } = new URL(request.url);
   const id_user_wallet = searchParams.get("wallet_id");
@@ -45,11 +41,8 @@ export async function GET(request: Request) {
  * Creates one or more new expenses records.
  */
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id_user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { response } = await getRequiredSession();
+  if (response) return response;
 
   const body = await request.json();
   const isBatch = Array.isArray(body);
@@ -62,7 +55,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabaseAdmin
       .from("tbl_expenses")
       .insert(
-        body.map((item: any) => ({
+        body.map((item: Record<string, unknown>) => ({
           id_user_wallet: item.id_user_wallet,
           ds_description: item.ds_description,
           vl_amount: item.vl_amount,
@@ -124,11 +117,8 @@ export async function POST(request: Request) {
  * Hard deletes expensess by a list of ids.
  */
 export async function DELETE(request: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id_user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { response } = await getRequiredSession();
+  if (response) return response;
 
   const { ids } = (await request.json()) as { ids: string[] };
 
@@ -159,11 +149,8 @@ export async function DELETE(request: Request) {
  * Updates an existing expenses record.
  */
 export async function PATCH(request: Request) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user?.id_user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { response } = await getRequiredSession();
+  if (response) return response;
 
   const body = (await request.json()) as {
     id_expense: string;
