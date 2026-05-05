@@ -32,3 +32,6 @@ export * from "./list/index";
 export * from "./list/types";
 
 export * from "./auth/error-handler/index";
+
+export * from "./tabs/index";
+export * from "./tabs/types";

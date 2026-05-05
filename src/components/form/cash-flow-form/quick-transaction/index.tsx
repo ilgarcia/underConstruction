@@ -40,9 +40,12 @@ export function QuickTransaction() {
   });
 
   React.useEffect(() => {
-    if (wallet?.vl_balance !== undefined) form.setValue("balance", wallet.vl_balance);
-    form.setValue("receivables", totalReceivables);
-    form.setValue("expenses", totalExpenses);
+    form.reset({
+      balance: wallet?.vl_balance ?? 0,
+      receivables: totalReceivables ?? 0,
+      expenses: totalExpenses ?? 0,
+      invoice: 0,
+    });
   }, [wallet?.vl_balance, totalReceivables, totalExpenses, form]);
 
   const onSubmit = async (data: QuickTransactionData) => {
@@ -58,6 +61,7 @@ export function QuickTransaction() {
       content: (
         <Category
           targetLabel="Fatura"
+          idUserWallet={wallet?.id_user_wallet}
           onSubmit={(data) => {
             console.log("Fatura categorizada:", data);
             closeDialog();

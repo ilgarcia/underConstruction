@@ -15,4 +15,9 @@ export interface CategoryFormProps {
    * Optional initial category value.
    */
   initialValue?: string;
+
+  /**
+   * Optional id for user wallet.
+   */
+  idUserWallet?: string;
 }

@@ -1,53 +1,22 @@
 import { useEffect, useState } from "react";
 import { useUserStore } from "@/store/user-store";
+import { useWalletStore } from "@/store/wallet-store";
 import type { WalletRecord, UseWalletInitResult, UseWalletUpdateResult } from "./types";
 
 function useWalletInit(): UseWalletInitResult {
   const isLoaded = useUserStore((state) => state.isLoaded);
-
-  const [wallet, setWallet] = useState<WalletRecord | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  
+  const wallet = useWalletStore((state) => state.wallet);
+  const isLoading = useWalletStore((state) => state.isLoading);
+  const error = useWalletStore((state) => state.error);
+  const fetchWallet = useWalletStore((state) => state.fetchWallet);
 
   useEffect(() => {
-    if (!isLoaded) return;
-
-    let cancelled = false;
-
-    async function fetchOrCreateWallet() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const res = await fetch("/api/cash-flow/wallet");
-
-        if (!res.ok) {
-          const { error: msg } = await res.json();
-          throw new Error(msg ?? "Failed to load wallet");
-        }
-
-        const data: WalletRecord = await res.json();
-
-        if (!cancelled) {
-          setWallet(data);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Unknown error");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
+    // Only fetch if user is loaded and we haven't fetched yet
+    if (isLoaded && !wallet && !isLoading && !error) {
+      fetchWallet();
     }
-
-    fetchOrCreateWallet();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoaded]);
+  }, [isLoaded, wallet, isLoading, error, fetchWallet]);
 
   return { wallet, isLoading, error };
 }
@@ -55,6 +24,7 @@ function useWalletInit(): UseWalletInitResult {
 function useWalletUpdate(): UseWalletUpdateResult {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const updateBalanceLocally = useWalletStore((state) => state.updateBalanceLocally);
 
   const updateBalance = async (id_user_wallet: string, vl_balance: number): Promise<void> => {
     setIsUpdating(true);
@@ -71,6 +41,9 @@ function useWalletUpdate(): UseWalletUpdateResult {
         const { error: msg } = await res.json();
         throw new Error(msg ?? "Failed to update wallet");
       }
+      
+      // Update local store so components reactive to the wallet state re-render
+      updateBalanceLocally(vl_balance);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
       throw err;
