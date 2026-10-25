@@ -14,6 +14,8 @@ export interface TransactionManagerProps {
   listTitle?: string;
   idKey: string;
   manager: TransactionManagerStore;
+  /** Adds "Frequência / Quantidade de meses / A partir de" (receivables, extra expenses). */
+  withFrequency?: boolean;
   onSubmit?: (data: any) => void;
   onEditChange?: (isEditing: boolean, editItem: any, handleCancel: () => void) => void;
 }

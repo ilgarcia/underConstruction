@@ -10,6 +10,7 @@ export function Receivables({ targetLabel, listTitle, idUserWallet, onSubmit, on
       targetLabel={targetLabel || "Recebíveis"}
       listTitle={listTitle}
       idKey="id_receivable"
+      withFrequency
       manager={manager}
       onSubmit={onSubmit}
       onEditChange={onEditChange}

@@ -1,6 +1,14 @@
-import type { ReceivableRecord, ExpensesRecord, CreditCardRecord } from "@/hooks";
+import type {
+  ReceivableRecord,
+  ExpensesRecord,
+  ExtraExpenseRecord,
+  CreditCardRecord,
+  CreditCardInvoiceRecord,
+} from "@/hooks";
 import type { CreditCardBalanceRecord } from "@/store/credit-card-balance-store";
-import { formatDateShort, toYMD, getEffectiveDatesSet } from "@/helpers/date";
+import { formatDateShort, toYMD } from "@/helpers/date";
+import { dayInMonth, getUpcomingInvoices } from "@/helpers/invoice";
+import { formatMonthShort, isActiveInMonth, toMonthKey } from "@/helpers/month";
 import type { ChartDataPoint, DailyBalance, MonthlyDataPoint } from "./types";
 
 interface SimulationInput {
@@ -9,13 +17,28 @@ interface SimulationInput {
   initialBalance: number;
   receivables: ReceivableRecord[];
   expenses: ExpensesRecord[];
+  extraExpenses: ExtraExpenseRecord[];
   creditCards: CreditCardRecord[];
   creditCardBalances: CreditCardBalanceRecord[];
+  invoices: CreditCardInvoiceRecord[];
+}
+
+interface DayItem {
+  vl_day: number;
+  vl_amount: number;
+}
+
+/** Sum of the items that fall on `date` (day 31 falls on the last day of shorter months). */
+function sumOnDay<T extends DayItem>(items: T[], date: Date): number {
+  return items
+    .filter((i) => dayInMonth(date.getFullYear(), date.getMonth(), i.vl_day).getDate() === date.getDate())
+    .reduce((sum, i) => sum + Number(i.vl_amount), 0);
 }
 
 /**
- * Projects the wallet balance day by day. Receivables and expenses repeat every month on their
- * day; card charges accumulate in the open invoice, which closes and is paid on the card's dates.
+ * Projects the wallet balance day by day. Fixed bills repeat every month; receivables and extra
+ * expenses follow their frequency; each card invoice (launched amount + recurring charges) is paid
+ * on its due date, moved to Monday on weekends.
  */
 function simulateCashFlow({
   startDate,
@@ -23,51 +46,40 @@ function simulateCashFlow({
   initialBalance,
   receivables,
   expenses,
+  extraExpenses,
   creditCards,
   creditCardBalances,
+  invoices,
 }: SimulationInput): DailyBalance[] {
   const result: DailyBalance[] = [];
   let balance = initialBalance;
   const monthsAhead = Math.ceil(days / 28) + 1;
 
-  const ccStates = creditCards.map((cc) => ({
-    id: cc.id_credit_card,
-    openInvoice: Number(cc.vl_balance) || 0,
-    closedInvoice: 0,
-    effectiveClosingDates: getEffectiveDatesSet(startDate, cc.dt_day_closing, "closing", monthsAhead),
-    effectivePaymentDates: getEffectiveDatesSet(startDate, cc.vl_day, "payment", monthsAhead),
-  }));
+  // Amount to pay on each date, across every card
+  const payments = new Map<string, number>();
+  for (const card of creditCards) {
+    const recurring = creditCardBalances
+      .filter((b) => b.id_credit_card === card.id_credit_card)
+      .reduce((sum, b) => sum + Number(b.vl_amount), 0);
+
+    for (const { monthKey, dueDate } of getUpcomingInvoices(card.vl_day, startDate, monthsAhead)) {
+      const launched = invoices.find(
+        (i) => i.id_credit_card === card.id_credit_card && i.dt_month === monthKey,
+      );
+      const key = toYMD(dueDate);
+      payments.set(key, (payments.get(key) ?? 0) + Number(launched?.vl_amount ?? 0) + recurring);
+    }
+  }
 
   for (let i = 0; i < days; i++) {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
+    const monthKey = toMonthKey(date);
 
-    const currentDay = date.getDate();
-    const currentYMD = toYMD(date);
-
-    balance += receivables
-      .filter((r) => r.vl_day === currentDay)
-      .reduce((sum, r) => sum + Number(r.vl_amount), 0);
-
-    balance -= expenses
-      .filter((e) => e.vl_day === currentDay)
-      .reduce((sum, e) => sum + Number(e.vl_amount), 0);
-
-    for (const cc of ccStates) {
-      cc.openInvoice += creditCardBalances
-        .filter((b) => b.id_credit_card === cc.id && b.vl_day === currentDay)
-        .reduce((sum, b) => sum + Number(b.vl_amount), 0);
-
-      if (cc.effectiveClosingDates.has(currentYMD)) {
-        cc.closedInvoice += cc.openInvoice;
-        cc.openInvoice = 0;
-      }
-
-      if (cc.effectivePaymentDates.has(currentYMD)) {
-        balance -= cc.closedInvoice;
-        cc.closedInvoice = 0;
-      }
-    }
+    balance += sumOnDay(receivables.filter((r) => isActiveInMonth(r, monthKey)), date);
+    balance -= sumOnDay(expenses, date);
+    balance -= sumOnDay(extraExpenses.filter((e) => isActiveInMonth(e, monthKey)), date);
+    balance -= payments.get(toYMD(date)) ?? 0;
 
     result.push({ date, value: Math.round(balance) });
   }
@@ -92,10 +104,7 @@ function toMonthlyPoints(daily: DailyBalance[]): MonthlyDataPoint[] {
 
   for (const d of daily) {
     const key = `${d.date.getFullYear()}-${d.date.getMonth()}`;
-    const label = d.date
-      .toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
-      .replace(". de ", "/")
-      .replace(" de ", "/");
+    const label = formatMonthShort(d.date);
     const current = months.get(key);
 
     if (!current) {

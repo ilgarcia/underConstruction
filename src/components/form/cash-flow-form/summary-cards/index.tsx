@@ -5,14 +5,23 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/helpers/currency";
+import {
+  formatMonthLong,
+  formatMonthShort,
+  isActiveInMonth,
+  parseMonthKey,
+  toMonthKey,
+  type MonthlyFrequency,
+} from "@/helpers/month";
 import { AutoSaveInput } from "@/components/custom";
 import {
   useWalletInit,
   useWalletUpdate,
   useReceivableList,
   useExpensesList,
+  useExtraExpenseList,
   useCreditCardInit,
-  useCreditCardUpdate,
+  useCardInvoiceSchedule,
 } from "@/hooks";
 import type { PanelKey } from "../types";
 import { SummaryCardsProps } from "./types";
@@ -66,37 +75,50 @@ function ToggleButton({
  */
 export function SummaryCards({ openPanel, onToggle }: SummaryCardsProps) {
   const { wallet } = useWalletInit();
+  const idUserWallet = wallet?.id_user_wallet;
   const { updateBalance } = useWalletUpdate();
-  const { totalSum: totalReceivables } = useReceivableList(wallet?.id_user_wallet);
-  const { totalSum: totalExpenses } = useExpensesList(wallet?.id_user_wallet);
-  const { creditCards, refresh: refreshCards } = useCreditCardInit(wallet?.id_user_wallet);
-  const { updateCreditCard } = useCreditCardUpdate();
+  const { receivables } = useReceivableList(idUserWallet);
+  const { totalSum: totalExpenses } = useExpensesList(idUserWallet);
+  const { extraExpenses } = useExtraExpenseList(idUserWallet);
+  const { creditCards } = useCreditCardInit(idUserWallet);
+  const { getSchedule, saveInvoice } = useCardInvoiceSchedule(idUserWallet);
 
-  const singleCard = creditCards.length === 1 ? creditCards[0] : null;
-  const totalInvoices = creditCards.reduce((sum, c) => sum + Number(c.vl_balance), 0);
-  const monthName = new Date().toLocaleDateString("pt-BR", { month: "long" });
+  const today = new Date();
+  const monthKey = toMonthKey(today);
+  const monthShort = formatMonthShort(today).split("/")[0];
+  const sumActive = (items: (MonthlyFrequency & { vl_amount: number })[]) =>
+    items
+      .filter((i) => isActiveInMonth(i, monthKey))
+      .reduce((sum, i) => sum + Number(i.vl_amount), 0);
+  const totalReceivables = sumActive(receivables);
+  const totalExtras = sumActive(extraExpenses);
+
+  // Next invoice of each card (the first one due today or later)
+  const nextInvoices = creditCards.map((card) => ({ card, invoice: getSchedule(card, 1)[0] }));
+  const singleCard = nextInvoices.length === 1 ? nextInvoices[0] : null;
+  const invoiceMonth = singleCard?.invoice
+    ? formatMonthLong(parseMonthKey(singleCard.invoice.monthKey))
+    : "";
+  const totalInvoices = nextInvoices.reduce((sum, { invoice }) => sum + (invoice?.total ?? 0), 0);
 
   const saveBalance = async (value: number | string) => {
-    if (!wallet?.id_user_wallet) return;
+    if (!idUserWallet) return;
     try {
-      await updateBalance(wallet.id_user_wallet, Number(value));
+      await updateBalance(idUserWallet, Number(value));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar o saldo.");
       throw err;
     }
   };
 
-  const saveInvoice = async (value: number | string) => {
-    if (!singleCard) return;
+  const saveSingleInvoice = async (value: number | string) => {
+    if (!singleCard?.invoice) return;
     try {
-      await updateCreditCard({
-        id_credit_card: singleCard.id_credit_card,
-        ds_description: singleCard.ds_description,
-        vl_balance: Number(value),
-        vl_day: singleCard.vl_day,
-        dt_day_closing: singleCard.dt_day_closing,
+      await saveInvoice({
+        id_credit_card: singleCard.card.id_credit_card,
+        dt_month: singleCard.invoice.monthKey,
+        vl_amount: Number(value),
       });
-      await refreshCards();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao salvar a fatura.");
       throw err;
@@ -118,17 +140,18 @@ export function SummaryCards({ openPanel, onToggle }: SummaryCardsProps) {
       </Tile>
 
       <Tile active={openPanel === "card"}>
-        {singleCard ? (
+        {singleCard?.invoice ? (
           <AutoSaveInput
-            label={`Fatura lançada · ${monthName}`}
-            value={Number(singleCard.vl_balance)}
-            onSave={saveInvoice}
+            key={singleCard.invoice.monthKey}
+            label={`Fatura lançada · ${invoiceMonth}`}
+            value={singleCard.invoice.launched}
+            onSave={saveSingleInvoice}
             hideStatus
           />
         ) : (
           <div className="space-y-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Faturas lançadas · {creditCards.length} cartões
+              Próximas faturas · {creditCards.length} cartões
             </span>
             <p className="flex h-9 items-center font-mono text-lg font-bold">
               {formatCurrency(totalInvoices)}
@@ -156,12 +179,25 @@ export function SummaryCards({ openPanel, onToggle }: SummaryCardsProps) {
         />
       </Tile>
 
+      <Tile active={openPanel === "extras"}>
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Gastos extras · {monthShort}
+        </span>
+        <span className="font-mono text-xl font-bold">− {formatCurrency(totalExtras)}</span>
+        <ToggleButton
+          panel="extras"
+          label="Ver gastos extras"
+          openPanel={openPanel}
+          onToggle={onToggle}
+        />
+      </Tile>
+
       <Tile active={openPanel === "receivables"}>
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Recebíveis · mês
+          Recebíveis · {monthShort}
         </span>
         <span className="font-mono text-xl font-bold text-success">
-          + {formatCurrency(totalReceivables ?? 0)}
+          + {formatCurrency(totalReceivables)}
         </span>
         <ToggleButton
           panel="receivables"

@@ -4,27 +4,39 @@ import { getRequiredSession } from "@/lib/api-auth";
 
 /**
  * GET /api/cash-flow/credit-card-balance
- * Fetches credit card balance records by credit card id.
+ * Fetches recurring card charges by credit card id (`wallet_id`, the name the store factory
+ * uses) or, with `id_user_wallet`, the charges of every card in a wallet.
  */
 export async function GET(request: Request) {
   const { response } = await getRequiredSession();
   if (response) return response;
 
   const { searchParams } = new URL(request.url);
-  const id_credit_card = searchParams.get("wallet_id"); // The store factory uses wallet_id in fetchItems
+  const id_credit_card = searchParams.get("wallet_id");
+  const id_user_wallet = searchParams.get("id_user_wallet");
 
-  if (!id_credit_card) {
+  if (!id_credit_card && !id_user_wallet) {
     return NextResponse.json(
-      { error: "wallet_id query parameter is required" },
+      { error: "wallet_id or id_user_wallet query parameter is required" },
       { status: 400 },
     );
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("tbl_credit_card_balances")
-    .select("*")
-    .eq("id_credit_card", id_credit_card)
-    .order("vl_day", { ascending: true });
+  const query = id_credit_card
+    ? supabaseAdmin
+      .from("tbl_credit_card_balances")
+      .select("*")
+      .eq("id_credit_card", id_credit_card)
+    : supabaseAdmin
+      .from("tbl_credit_card_balances")
+      // Empty inner embed: filters by the card's wallet without returning the card
+      .select(
+        "id_credit_card_balance, id_credit_card, ds_description, vl_amount, vl_day, "
+          + "dt_created, dt_updated, tbl_credit_cards!inner()",
+      )
+      .eq("tbl_credit_cards.id_user_wallet", id_user_wallet);
+
+  const { data, error } = await query.order("vl_day", { ascending: true });
 
   if (error) {
     return NextResponse.json(

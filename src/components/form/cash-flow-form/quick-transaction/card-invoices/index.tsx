@@ -14,10 +14,11 @@ import {
 } from "@/hooks";
 import type { CreditCardRecord, CreditCardUpdatePayload } from "@/hooks";
 import { TransactionManager } from "../transaction-manager";
+import { InvoiceSchedule } from "./invoice-schedule";
 
 /**
- * Category - Manages the wallet's credit cards inline: card settings (saved on blur),
- * card deletion and the card's recurring charges, which add up into every month's invoice.
+ * Category - Manages the wallet's credit cards inline: card settings (saved on blur), the next
+ * invoices (editable per month), card deletion and the recurring charges of the card.
  */
 export function Category({ idUserWallet }: CategoryFormProps) {
   const { creditCards, isLoading, error, refresh } = useCreditCardInit(idUserWallet);
@@ -47,7 +48,6 @@ export function Category({ idUserWallet }: CategoryFormProps) {
     const payload: CreditCardUpdatePayload = {
       id_credit_card: card.id_credit_card,
       ds_description: card.ds_description,
-      vl_balance: Number(card.vl_balance),
       vl_day: card.vl_day,
       dt_day_closing: card.dt_day_closing,
       ...changes,
@@ -140,14 +140,9 @@ export function Category({ idUserWallet }: CategoryFormProps) {
               onChange={(day) => saveCard({ vl_day: day }).catch(() => undefined)}
               containerClassName="flex-[1_1_140px]"
             />
-            <AutoSaveInput
-              key={`balance-${card.id_credit_card}`}
-              label="Fatura lançada"
-              value={Number(card.vl_balance)}
-              onSave={(v) => saveCard({ vl_balance: Number(v) })}
-              containerClassName="flex-[1_1_180px] min-w-0"
-            />
           </div>
+
+          <InvoiceSchedule card={card} idUserWallet={idUserWallet} />
 
           {canDelete && (
             <div className="flex flex-col gap-3">
@@ -157,7 +152,7 @@ export function Category({ idUserWallet }: CategoryFormProps) {
                   className="flex flex-wrap items-center justify-between gap-3 border border-destructive bg-destructive/10 px-4 py-3"
                 >
                   <span className="text-sm">
-                    Excluir <strong>{card.ds_description}</strong>? Os recorrentes dele saem da projeção.
+                    Excluir <strong>{card.ds_description}</strong>? Os recorrentes e as faturas dele saem da projeção.
                   </span>
                   <div className="flex gap-2">
                     <ActionButton

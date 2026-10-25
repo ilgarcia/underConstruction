@@ -1,6 +1,7 @@
 import { createTransactionStore } from "./transaction-factory";
+import type { MonthlyFrequency } from "@/helpers/month";
 
-export interface ReceivableRecord {
+export interface ReceivableRecord extends MonthlyFrequency {
   id_receivable: string;
   id_user_wallet: string;
   ds_description: string;

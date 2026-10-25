@@ -2,7 +2,6 @@ export interface CreditCardRecord {
   id_credit_card: string;
   id_user_wallet: string;
   ds_description: string;
-  vl_balance: number;
   vl_day: number;
   dt_day_closing: number;
   dt_created: string;
@@ -19,7 +18,6 @@ export interface UseCreditCardInitResult {
 export interface CreditCardUpdatePayload {
   id_credit_card: string;
   ds_description: string;
-  vl_balance: number;
   vl_day: number;
   dt_day_closing: number;
 }

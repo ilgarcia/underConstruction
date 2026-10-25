@@ -1,1 +1,1 @@
-export type PanelKey = "card" | "expenses" | "receivables";
+export type PanelKey = "card" | "expenses" | "extras" | "receivables";

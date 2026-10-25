@@ -1,11 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useWalletInit, useReceivableList, useExpensesList, useCreditCardInit } from "@/hooks";
 import {
-  useCreditCardBalanceStore,
-  type CreditCardBalanceRecord,
-} from "@/store/credit-card-balance-store";
+  useWalletInit,
+  useReceivableList,
+  useExpensesList,
+  useExtraExpenseList,
+  useCreditCardInit,
+  useCreditCardInvoices,
+  useCardCharges,
+} from "@/hooks";
 import {
   ComposedChart,
   Line,
@@ -97,34 +101,10 @@ export function CashFlowChart() {
   const initialBalance = wallet?.vl_balance ? Number(wallet.vl_balance) : 0;
   const { receivables } = useReceivableList(wallet?.id_user_wallet);
   const { expenses } = useExpensesList(wallet?.id_user_wallet);
+  const { extraExpenses } = useExtraExpenseList(wallet?.id_user_wallet);
   const { creditCards } = useCreditCardInit(wallet?.id_user_wallet);
-  // Refetch every card's charges whenever the charges of the selected card change
-  const editedBalances = useCreditCardBalanceStore((state) => state.items);
-  const [creditCardBalances, setCreditCardBalances] = useState<CreditCardBalanceRecord[]>([]);
-
-  useEffect(() => {
-    async function fetchAllBalances() {
-      if (creditCards.length === 0) {
-        setCreditCardBalances([]);
-        return;
-      }
-      try {
-        const results: unknown[] = await Promise.all(
-          creditCards.map((cc) =>
-            fetch(`/api/cash-flow/credit-card-balance?wallet_id=${cc.id_credit_card}`).then(
-              (res) => res.json(),
-            ),
-          ),
-        );
-        // Skip error objects returned instead of arrays
-        const valid = results.filter((r): r is CreditCardBalanceRecord[] => Array.isArray(r));
-        setCreditCardBalances(valid.flat());
-      } catch (err) {
-        console.error("Failed to fetch CC balances", err);
-      }
-    }
-    fetchAllBalances();
-  }, [creditCards, editedBalances]);
+  const { invoices } = useCreditCardInvoices(wallet?.id_user_wallet);
+  const creditCardBalances = useCardCharges(wallet?.id_user_wallet);
 
   const daily = useMemo(
     () =>
@@ -134,10 +114,22 @@ export function CashFlowChart() {
         initialBalance,
         receivables,
         expenses,
+        extraExpenses,
         creditCards,
         creditCardBalances,
+        invoices,
       }),
-    [range, startDate, initialBalance, receivables, expenses, creditCards, creditCardBalances],
+    [
+      range,
+      startDate,
+      initialBalance,
+      receivables,
+      expenses,
+      extraExpenses,
+      creditCards,
+      creditCardBalances,
+      invoices,
+    ],
   );
 
   const dailyPoints = useMemo(() => toDailyPoints(daily), [daily]);

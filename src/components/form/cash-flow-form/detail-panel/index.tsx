@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useWalletInit } from "@/hooks";
 import { Category } from "../quick-transaction/card-invoices";
 import { Expenses } from "../quick-transaction/expenses";
+import { ExtraExpenses } from "../quick-transaction/extra-expenses";
 import { Receivables } from "../quick-transaction/receivables";
 import type { PanelKey } from "../types";
 import { DetailPanelProps } from "./types";
@@ -11,6 +12,7 @@ import { DetailPanelProps } from "./types";
 const TITLES: Record<PanelKey, string> = {
   card: "Cartões e faturas",
   expenses: "Contas fixas",
+  extras: "Gastos extras",
   receivables: "Recebíveis",
 };
 
@@ -44,6 +46,13 @@ export function DetailPanel({ panel, onClose }: DetailPanelProps) {
         <Expenses
           targetLabel="Contas"
           listTitle="Contas cadastradas"
+          idUserWallet={idUserWallet}
+        />
+      )}
+      {panel === "extras" && (
+        <ExtraExpenses
+          targetLabel="Gasto extra"
+          listTitle="Gastos extras cadastrados"
           idUserWallet={idUserWallet}
         />
       )}

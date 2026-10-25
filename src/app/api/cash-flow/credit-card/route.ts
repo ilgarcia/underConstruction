@@ -40,7 +40,6 @@ export async function GET(request: Request) {
     .insert({
       id_user_wallet,
       ds_description: "Meu Cartão",
-      vl_balance: 0,
       vl_day: 1,
       dt_day_closing: 1
     })
@@ -61,12 +60,11 @@ export async function PATCH(request: Request) {
   const body = await request.json() as {
     id_credit_card: string;
     ds_description: string;
-    vl_balance: number;
     vl_day: number;
     dt_day_closing: number;
   };
 
-  const { id_credit_card, ds_description, vl_balance, vl_day, dt_day_closing } = body;
+  const { id_credit_card, ds_description, vl_day, dt_day_closing } = body;
 
   if (!id_credit_card) {
     return NextResponse.json({ error: "id_credit_card is required" }, { status: 400 });
@@ -76,7 +74,6 @@ export async function PATCH(request: Request) {
     .from("tbl_credit_cards")
     .update({
       ds_description,
-      vl_balance,
       vl_day,
       dt_day_closing,
       dt_updated: new Date().toISOString(),
@@ -120,7 +117,6 @@ export async function POST(request: Request) {
     .insert({
       id_user_wallet,
       ds_description,
-      vl_balance: 0,
       vl_day: 1,
       dt_day_closing: 1,
     })
@@ -139,7 +135,8 @@ export async function POST(request: Request) {
 
 /**
  * DELETE /api/cash-flow/credit-card
- * Deletes a credit card and its recurring charges. The last card of a wallet cannot be deleted.
+ * Deletes a credit card. Its recurring charges and invoices go with it (on delete cascade).
+ * The last card of a wallet cannot be deleted.
  */
 export async function DELETE(request: Request) {
   const { response } = await getRequiredSession();
@@ -177,18 +174,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json(
       { error: "O último cartão não pode ser excluído." },
       { status: 400 }
-    );
-  }
-
-  const { error: balancesError } = await supabaseAdmin
-    .from("tbl_credit_card_balances")
-    .delete()
-    .eq("id_credit_card", id_credit_card);
-
-  if (balancesError) {
-    return NextResponse.json(
-      { error: `Failed to delete credit card charges: ${balancesError.message}` },
-      { status: 500 }
     );
   }
 
