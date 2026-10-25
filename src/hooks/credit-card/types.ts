@@ -29,3 +29,20 @@ export interface UseCreditCardUpdateResult {
   error: string | null;
   updateCreditCard: (payload: CreditCardUpdatePayload) => Promise<void>;
 }
+
+export interface CreditCardCreatePayload {
+  id_user_wallet: string;
+  ds_description: string;
+}
+
+export interface UseCreditCardCreateResult {
+  isCreating: boolean;
+  error: string | null;
+  createCreditCard: (payload: CreditCardCreatePayload) => Promise<CreditCardRecord>;
+}
+
+export interface UseCreditCardDeleteResult {
+  isDeleting: boolean;
+  error: string | null;
+  deleteCreditCard: (id_credit_card: string) => Promise<void>;
+}

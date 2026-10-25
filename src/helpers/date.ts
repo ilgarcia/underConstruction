@@ -77,24 +77,26 @@ function getEffectivePaymentDate(date: Date): Date {
 
 /**
  * Generates a Set of "YYYY-M-D" effective dates for a given day of the month,
- * spanning a window of months (previous, current, next 2).
+ * spanning a window of months (previous, current, next `monthsAhead`).
  * 
  * @param startDate - The reference start date for the window
  * @param dayOfMonth - The target day of the month
  * @param type - Whether this is a "closing" date (anticipates to Friday) 
  *               or "payment" date (postpones to Monday)
+ * @param monthsAhead - How many months after the start month the window covers
  * @returns Set of formatted date strings
  */
 function getEffectiveDatesSet(
   startDate: Date, 
   dayOfMonth: number, 
-  type: "closing" | "payment"
+  type: "closing" | "payment",
+  monthsAhead = 2
 ): Set<string> {
   const effectiveDates = new Set<string>();
   const startY = startDate.getFullYear();
   const startM = startDate.getMonth();
 
-  for (let offset = -1; offset <= 2; offset++) {
+  for (let offset = -1; offset <= monthsAhead; offset++) {
     let d = new Date(startY, startM + offset, dayOfMonth);
     if (type === "closing") {
       d = getEffectiveClosingDate(d);

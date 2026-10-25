@@ -33,6 +33,7 @@ import { TransactionManagerProps } from "./types";
 
 export function TransactionManager({
   targetLabel,
+  listTitle,
   idKey,
   manager,
   onSubmit,
@@ -147,59 +148,68 @@ export function TransactionManager({
 
 
   return (
-    <div className="space-y-6 pt-4">
+    <div className="space-y-5">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-12 gap-3 items-start">
-          <div className="col-span-2">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3">
             <Input
               control={form.control}
               name="day_picker"
-              label="Data"
+              label="Dia"
               type="day_picker"
+              containerClassName="flex-[0_1_120px]"
             />
-          </div>
-          <div className="col-span-5">
             <Input
               control={form.control}
               name="description"
               label="Descrição"
               type="text"
               placeholder="Ex: Recebimento ou Gasto"
+              containerClassName="flex-[3_1_220px] min-w-0"
             />
-          </div>
-          <div className="col-span-3">
             <Input
               control={form.control}
               name="value"
               label="Valor"
               type="currency"
+              containerClassName="flex-[1_1_160px] min-w-0"
             />
           </div>
-          <div className="col-span-2 pt-[22px]">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {isEditing && (
+              <ActionButton
+                type="button"
+                variant="outline"
+                label="Cancelar"
+                onClick={handleCancelEdit}
+                className="w-auto px-4 bg-transparent border border-input"
+              />
+            )}
             <ActionButton
               type="submit"
               label={isEditing ? "Salvar" : "Confirmar"}
               loading={isSubmitting}
+              className="w-auto px-6 bg-primary text-primary-foreground font-bold"
             />
           </div>
         </form>
       </Form>
 
-      <div className="border-t border-zinc-200 dark:border-zinc-800 p-2">
-        <CustomList<any>
-          title={`${targetLabel} Cadastrados`}
-          items={items}
-          idKey={idKey}
-          columns={columns}
-          isLoading={isLoading}
-          onDeleteBatch={handleDelete}
-          onUndo={handleUndo}
-          onEdit={handleRowClick}
-          highlightedId={editItem?.[idKey]}
-          showConfirmation={false}
-          enableUndo={true}
-        />
-      </div>
+      <hr className="border-border" />
+
+      <CustomList<any>
+        title={listTitle ?? `${targetLabel} Cadastrados`}
+        items={items}
+        idKey={idKey}
+        columns={columns}
+        isLoading={isLoading}
+        onDeleteBatch={handleDelete}
+        onUndo={handleUndo}
+        onEdit={handleRowClick}
+        highlightedId={editItem?.[idKey]}
+        showConfirmation={false}
+        enableUndo={true}
+      />
     </div>
   );
 }

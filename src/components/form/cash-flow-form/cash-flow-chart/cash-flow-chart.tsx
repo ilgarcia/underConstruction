@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useWalletInit, useReceivableList, useExpensesList, useCreditCardInit } from "@/hooks";
-import type { ReceivableRecord, ExpensesRecord, CreditCardRecord } from "@/hooks";
+import {
+  useCreditCardBalanceStore,
+  type CreditCardBalanceRecord,
+} from "@/store/credit-card-balance-store";
 import {
   ComposedChart,
   Line,
@@ -13,270 +16,312 @@ import {
   Tooltip,
   ReferenceLine,
 } from "recharts";
-import { ChartDataPoint } from "./types";
-import {
-  formatDateShort,
-  toYMD,
-  getEffectiveDatesSet
-} from "@/helpers/date";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/helpers/currency";
+import { formatDateShort } from "@/helpers/date";
 import { Spinner } from "@/components/ui/spinner";
+import { ChartRange } from "./types";
+import {
+  simulateCashFlow,
+  daysUntilEndOfMonth,
+  toDailyPoints,
+  toMonthlyPoints,
+} from "./simulate";
+
+const RANGES: { id: ChartRange; label: string }[] = [
+  { id: "month", label: "Mês vigente" },
+  { id: "six-months", label: "Próximos 6 meses" },
+];
+
+const tooltipStyle = {
+  borderRadius: "0",
+  fontSize: "0.8rem",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--card-foreground)",
+};
 
 /**
- * Generates 30 days of mock cash flow data starting from `startDate`.
+ * Measures a container so Recharts can render with explicit dimensions
+ * (bypasses Recharts dimension warnings from ResponsiveContainer).
  */
-function generateMockData(
-  startDate: Date,
-  initialBalance: number,
-  receivables: ReceivableRecord[] = [],
-  expenses: ExpensesRecord[] = [],
-  creditCards: CreditCardRecord[] = [],
-  creditCardBalances: any[] = []
-): ChartDataPoint[] {
-  const data: ChartDataPoint[] = [];
-  let balance = initialBalance;
+function useContainerSize() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
-  // Initialize credit card states with the current open balance
-  const ccStates = creditCards.map((cc) => {
-    const effectiveClosingDates = getEffectiveDatesSet(startDate, cc.dt_day_closing, "closing");
-    const effectivePaymentDates = getEffectiveDatesSet(startDate, cc.vl_day, "payment");
+  useEffect(() => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    setSize({ width: rect.width, height: rect.height });
 
-    return {
-      id: cc.id_credit_card,
-      openInvoice: Number(cc.vl_balance) || 0,
-      closedInvoice: 0,
-      effectiveClosingDates,
-      effectivePaymentDates,
-    };
-  });
-
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + i);
-
-    const currentDay = date.getDate();
-    const currentYMD = toYMD(date);
-
-    // Sum receivables for this day
-    const dayReceivables = receivables
-      .filter((r) => r.vl_day === currentDay)
-      .reduce((sum, r) => sum + Number(r.vl_amount), 0);
-
-    // Sum expenses for this day
-    const dayExpenses = expenses
-      .filter((e) => e.vl_day === currentDay)
-      .reduce((sum, e) => sum + Number(e.vl_amount), 0);
-
-    balance += dayReceivables;
-    balance -= dayExpenses;
-
-    // Process Credit Cards
-    for (const cc of ccStates) {
-      // Add purchases for this day to the open invoice
-      const dayCCPurchases = creditCardBalances
-        .filter((b) => b.id_credit_card === cc.id && b.vl_day === currentDay)
-        .reduce((sum, b) => sum + Number(b.vl_amount), 0);
-
-      cc.openInvoice += dayCCPurchases;
-
-      // Close invoice if today is effective closing day
-      if (cc.effectiveClosingDates.has(currentYMD)) {
-        cc.closedInvoice += cc.openInvoice;
-        cc.openInvoice = 0;
-      }
-
-      // Pay invoice if today is effective payment day
-      if (cc.effectivePaymentDates.has(currentYMD)) {
-        balance -= cc.closedInvoice;
-        cc.closedInvoice = 0;
-      }
-    }
-
-    data.push({
-      date: formatDateShort(date),
-      value: Math.round(balance),
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      setSize({
+        width: entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width,
+        height: entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height,
+      });
     });
-  }
 
-  return data;
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, size, isReady: size.width > 50 && size.height > 50 };
+}
+
+function Highlight({ label, value, tone }: { label: string; value: string; tone?: "accent" }) {
+  return (
+    <div className="flex flex-col gap-1 bg-muted px-4 py-3">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={cn("font-mono text-lg font-bold", tone === "accent" && "text-primary")}>
+        {value}
+      </span>
+    </div>
+  );
 }
 
 /**
- * Line chart displaying mock cash flow projection over 30 days.
- * Uses a manual ResizeObserver to bypass Recharts dimension warnings.
+ * Projected balance chart with two ranges: the current month day by day (step chart)
+ * and the next 6 months (end-of-month line plus each month's lowest balance).
  */
 export function CashFlowChart() {
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const startDate = new Date();
+  const [range, setRange] = useState<ChartRange>("month");
+  const { ref, size, isReady } = useContainerSize();
+  const [startDate] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  });
 
   const { wallet, isLoading: isWalletLoading } = useWalletInit();
   const initialBalance = wallet?.vl_balance ? Number(wallet.vl_balance) : 0;
-
-  const { receivables, isLoading: isReceivablesLoading } = useReceivableList(wallet?.id_user_wallet);
-  const { expenses, isLoading: isExpensesLoading } = useExpensesList(wallet?.id_user_wallet);
-  const { creditCards, isLoading: isCCLoading } = useCreditCardInit(wallet?.id_user_wallet);
-
-  const [creditCardBalances, setCreditCardBalances] = useState<any[]>([]);
+  const { receivables } = useReceivableList(wallet?.id_user_wallet);
+  const { expenses } = useExpensesList(wallet?.id_user_wallet);
+  const { creditCards } = useCreditCardInit(wallet?.id_user_wallet);
+  // Refetch every card's charges whenever the charges of the selected card change
+  const editedBalances = useCreditCardBalanceStore((state) => state.items);
+  const [creditCardBalances, setCreditCardBalances] = useState<CreditCardBalanceRecord[]>([]);
 
   useEffect(() => {
     async function fetchAllBalances() {
-      if (!creditCards || creditCards.length === 0) return;
+      if (creditCards.length === 0) {
+        setCreditCardBalances([]);
+        return;
+      }
       try {
-        const promises = creditCards.map((cc) =>
-          fetch(`/api/cash-flow/credit-card-balance?wallet_id=${cc.id_credit_card}`).then((res) =>
-            res.json()
-          )
+        const results: unknown[] = await Promise.all(
+          creditCards.map((cc) =>
+            fetch(`/api/cash-flow/credit-card-balance?wallet_id=${cc.id_credit_card}`).then(
+              (res) => res.json(),
+            ),
+          ),
         );
-        const results = await Promise.all(promises);
-        // Prevent flat errors if an API call returned an error object instead of an array
-        const validResults = results.filter(Array.isArray);
-        setCreditCardBalances(validResults.flat());
+        // Skip error objects returned instead of arrays
+        const valid = results.filter((r): r is CreditCardBalanceRecord[] => Array.isArray(r));
+        setCreditCardBalances(valid.flat());
       } catch (err) {
         console.error("Failed to fetch CC balances", err);
       }
     }
     fetchAllBalances();
-  }, [creditCards]);
+  }, [creditCards, editedBalances]);
 
-  const data = useMemo(() => {
-    return generateMockData(
-      startDate,
-      initialBalance,
-      receivables,
-      expenses,
-      creditCards,
-      creditCardBalances
-    );
-  }, [startDate, initialBalance, receivables, expenses, creditCards, creditCardBalances]);
+  const daily = useMemo(
+    () =>
+      simulateCashFlow({
+        startDate,
+        days: range === "month" ? 30 : daysUntilEndOfMonth(startDate, 6),
+        initialBalance,
+        receivables,
+        expenses,
+        creditCards,
+        creditCardBalances,
+      }),
+    [range, startDate, initialBalance, receivables, expenses, creditCards, creditCardBalances],
+  );
 
-  const minValue = useMemo(() => {
-    if (!data.length) return 0;
-    return Math.min(...data.map((d) => d.value));
-  }, [data]);
+  const dailyPoints = useMemo(() => toDailyPoints(daily), [daily]);
+  const monthlyPoints = useMemo(() => toMonthlyPoints(daily).slice(1), [daily]);
 
-  const enhancedData = useMemo(() => {
-    return data.map((d) => ({ ...d, minValue }));
-  }, [data, minValue]);
+  const lowest = useMemo(() => {
+    if (daily.length === 0) return null;
+    return daily.reduce((min, d) => (d.value < min.value ? d : min), daily[0]);
+  }, [daily]);
 
-  const chartColor = minValue >= 0 ? "#34d399" : "#ef4444"; // Subtle green (emerald-400) or Red
+  const tightestMonth = useMemo(() => {
+    if (monthlyPoints.length === 0) return null;
+    return monthlyPoints.reduce((min, m) => (m.minValue < min.minValue ? m : min));
+  }, [monthlyPoints]);
 
-  useEffect(() => {
-    // Initial measurement
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setDimensions({ width: rect.width, height: rect.height });
-
-      const resizeObserver = new ResizeObserver((entries) => {
-        if (!entries || entries.length === 0) return;
-        const entry = entries[0];
-        // Use borderBoxSize for most accurate dimensions relative to the container
-        const width = entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
-        const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
-
-        setDimensions({ width, height });
-      });
-
-      resizeObserver.observe(containerRef.current);
-      return () => resizeObserver.disconnect();
-    }
-  }, []);
-
-  // Only render LineChart if we have valid, positive dimensions.
-  // We use 50px as a safe threshold for "actually visible".
-  const isReady = dimensions.width > 50 && dimensions.height > 50;
+  const last = daily[daily.length - 1];
+  const lastMonth = monthlyPoints[monthlyPoints.length - 1];
+  const endValue = range === "month" ? last?.value ?? initialBalance : lastMonth?.value ?? 0;
+  const delta = endValue - initialBalance;
 
   return (
-    <div className="flex-1 w-full min-w-0 min-h-0 relative bg-zinc-50/50 dark:bg-zinc-900/10">
-      <div
-        ref={containerRef}
-        className="absolute inset-0 w-full h-full min-h-[300px] flex items-center justify-center overflow-hidden"
-      >
-        {isReady ? (
-          <ComposedChart
-            width={dimensions.width}
-            height={dimensions.height}
-            data={enhancedData}
-            margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
+    <div className="flex flex-col gap-6 flex-1 min-h-0">
+      <div role="tablist" aria-label="Período do gráfico" className="flex self-start border border-input">
+        {RANGES.map((r) => (
+          <button
+            key={r.id}
+            role="tab"
+            aria-selected={range === r.id}
+            onClick={() => setRange(r.id)}
+            className={cn(
+              "h-10 px-4 text-sm font-bold transition-colors",
+              range === r.id ? "bg-foreground text-background" : "text-foreground hover:bg-muted",
+            )}
           >
-            <defs>
-              <linearGradient 
-                id="minAreaColor" 
-                x1="0" 
-                y1={minValue >= 0 ? "0" : "1"} 
-                x2="0" 
-                y2={minValue >= 0 ? "1" : "0"}
-              >
-                <stop offset="5%" stopColor={chartColor} stopOpacity={0.15} />
-                <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="currentColor"
-              className="opacity-10"
-            />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-              interval={4}
-              className="text-muted-foreground"
-            />
-            <YAxis
-              tick={{ fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v) => `R$ ${(Number(v) / 1_000).toFixed(1)}k`}
-              className="text-muted-foreground"
-              width={68}
-            />
-            <Tooltip
-              contentStyle={{
-                borderRadius: "0",
-                fontSize: "0.8rem",
-                border: "1px solid var(--border)",
-                background: "var(--card)",
-                color: "var(--card-foreground)",
-              }}
-              formatter={(value) => [
-                `R$ ${Number(value).toLocaleString("pt-BR")}`,
-                "Saldo",
-              ]}
-              labelClassName="font-medium"
-            />
-            <ReferenceLine 
-              y={0} 
-              stroke="currentColor" 
-              strokeOpacity={0.4} 
-              strokeWidth={1.5} 
-              strokeDasharray="4 4" 
-            />
-            <Area
-              type="monotone"
-              dataKey="minValue"
-              stroke={chartColor}
-              strokeWidth={1}
-              strokeOpacity={0.6}
-              fillOpacity={1}
-              fill="url(#minAreaColor)"
-              activeDot={false}
-              isAnimationActive={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="var(--primary)"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 0 }}
-            />
-          </ComposedChart>
+            {r.label}
+          </button>
+        ))}
+      </div>
 
-        ) : (
-          <Spinner className="size-6 text-muted-foreground" />
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-sm font-semibold text-muted-foreground">
+            {range === "month"
+              ? `Saldo projetado em ${last ? formatDateShort(last.date) : "-"}`
+              : `Saldo projetado no fim de ${lastMonth?.label ?? "-"}`}
+          </h2>
+          <span className="font-mono text-4xl font-bold tracking-tight">
+            {formatCurrency(endValue)}
+          </span>
+          <span className={cn("text-sm", delta >= 0 ? "text-success" : "text-destructive")}>
+            {delta >= 0 ? "+ " : "− "}
+            {formatCurrency(Math.abs(delta))} em relação a hoje
+          </span>
+        </div>
+        {range === "month" && lowest && (
+          <Highlight
+            label={`Menor saldo · ${formatDateShort(lowest.date)}`}
+            value={formatCurrency(lowest.value)}
+            tone="accent"
+          />
+        )}
+        {range === "six-months" && tightestMonth && (
+          <Highlight
+            label={`Mês mais apertado · ${tightestMonth.label}`}
+            value={formatCurrency(tightestMonth.minValue)}
+            tone="accent"
+          />
         )}
       </div>
+
+      <div className="relative w-full min-w-0 h-[320px]">
+        <div ref={ref} className="absolute inset-0 flex items-center justify-center overflow-hidden">
+          {!isReady || isWalletLoading ? (
+            <Spinner className="size-6 text-muted-foreground" />
+          ) : range === "month" ? (
+            <ComposedChart
+              width={size.width}
+              height={size.height}
+              data={dailyPoints}
+              margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid vertical={false} stroke="var(--border)" />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                interval={6}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `R$ ${(Number(v) / 1_000).toFixed(1)}k`}
+                width={68}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={(value) => [formatCurrency(Number(value)), "Saldo"]}
+              />
+              <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="4 4" />
+              {lowest && (
+                <ReferenceLine
+                  x={formatDateShort(lowest.date)}
+                  stroke="var(--muted-foreground)"
+                  strokeDasharray="4 4"
+                />
+              )}
+              <Area
+                type="stepAfter"
+                dataKey="value"
+                stroke="var(--primary)"
+                strokeWidth={2.5}
+                fill="var(--primary)"
+                fillOpacity={0.12}
+                activeDot={{ r: 4, strokeWidth: 0 }}
+                isAnimationActive={false}
+              />
+            </ComposedChart>
+          ) : (
+            <ComposedChart
+              width={size.width}
+              height={size.height}
+              data={monthlyPoints}
+              margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid vertical={false} stroke="var(--border)" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `R$ ${(Number(v) / 1_000).toFixed(1)}k`}
+                width={68}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={(value, name) => [
+                  formatCurrency(Number(value)),
+                  name === "minValue" ? "Menor saldo do mês" : "Fim do mês",
+                ]}
+              />
+              <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="4 4" />
+              <Area
+                type="linear"
+                dataKey="value"
+                stroke="var(--primary)"
+                strokeWidth={3}
+                fill="var(--primary)"
+                fillOpacity={0.12}
+                dot={{ r: 3, strokeWidth: 0, fill: "var(--primary)" }}
+                isAnimationActive={false}
+              />
+              <Line
+                type="linear"
+                dataKey="minValue"
+                stroke="var(--muted-foreground)"
+                strokeWidth={2}
+                strokeDasharray="6 5"
+                dot={false}
+                isAnimationActive={false}
+              />
+            </ComposedChart>
+          )}
+        </div>
+      </div>
+
+      {range === "six-months" && (
+        <div className="flex flex-wrap gap-5 text-xs text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <span className="h-[3px] w-[18px] bg-primary" />
+            Fim do mês
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-[18px] border-t-2 border-dashed border-muted-foreground" />
+            Menor saldo do mês
+          </span>
+        </div>
+      )}
     </div>
   );
 }

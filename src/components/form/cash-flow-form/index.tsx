@@ -1,24 +1,28 @@
-import { QuickTransaction } from "./quick-transaction";
+"use client";
+
+import * as React from "react";
 import { CashFlowChart } from "./cash-flow-chart";
+import { SummaryCards } from "./summary-cards";
+import { DetailPanel } from "./detail-panel";
 import { Paper } from "@/components/custom";
+import type { PanelKey } from "./types";
 
 export function CashFlowForm() {
+  const [openPanel, setOpenPanel] = React.useState<PanelKey | null>(null);
+
+  const togglePanel = (panel: PanelKey) => {
+    setOpenPanel((current) => (current === panel ? null : panel));
+  };
+
   return (
-    <div className="grid grid-cols-12 gap-8 flex-1 min-h-0">
-      <aside className="col-span-12 lg:col-span-4 flex flex-col">
-        <Paper className="flex-1">
-          <QuickTransaction />
-        </Paper>
-      </aside>
-      <main className="col-span-12 lg:col-span-8 flex flex-col gap-6 min-w-0 min-h-0">
-        <Paper
-          title="Saldo Projetado"
-          subtitle="Evolução do saldo consolidado"
-          className="flex-1 min-h-0"
-        >
-          <CashFlowChart />
-        </Paper>
-      </main>
+    <div className="flex flex-col gap-6">
+      <SummaryCards openPanel={openPanel} onToggle={togglePanel} />
+
+      {openPanel && <DetailPanel panel={openPanel} onClose={() => setOpenPanel(null)} />}
+
+      <Paper>
+        <CashFlowChart />
+      </Paper>
     </div>
   );
 }
