@@ -12,11 +12,7 @@ function constructMetadata({
   title,
   description = "Organize sua vida com simplicidade: controle financeiro, investimentos e agenda em um só lugar com o Peach Organizer.",
   image = "/og-image.png",
-  icons = {
-    icon: "/favicon.ico",
-    shortcut: "/favicon-16x16.png",
-    apple: "/apple-touch-icon.png",
-  },
+  icons,
   noIndex = false,
 }: ConstructMetadataProps = {}): Metadata {
   const baseTitle = "Peach Organizer";

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>
+    .l { stroke: #f07a2c; }
+    .f { fill: #2f8a5f; }
+    @media (prefers-color-scheme: dark) {
+      .l { stroke: #ff9f6b; }
+      .f { fill: #8fe0bc; }
+    }
+  </style>
+  <path class="l" d="M13 25 H16 M21 25 H51 M9 34 H12 M17 34 H55 M11 43 H14 M19 43 H53 M19 52 H22 M27 52 H45" fill="none" stroke-width="4"/>
+  <path class="f" d="M32 18 C33 11 39 7 46 7.5 C45 14 39 18 32 18 Z"/>
+</svg>

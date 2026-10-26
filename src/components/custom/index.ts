@@ -6,6 +6,9 @@ export * from "./user-profile/types";
 
 export * from "./card/index";
 
+export * from "./logo/index";
+export * from "./logo/types";
+
 export * from "./buttons/login-button/index";
 
 export * from "./buttons/logout-button/index";
