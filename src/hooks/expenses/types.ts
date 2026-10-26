@@ -40,9 +40,7 @@ interface UseExpensesListResult extends Omit<UseCashFlowListResult<ExpensesRecor
   expenses: ExpensesRecord[];
 }
 
-interface UseExpensesManagerResult extends TransactionManagerStore {
-  items: ExpensesRecord[];
-}
+type UseExpensesManagerResult = TransactionManagerStore<ExpensesRecord, "id_expense">;
 
 export type {
   ExpensesRecord,

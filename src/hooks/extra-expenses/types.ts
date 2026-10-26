@@ -43,9 +43,10 @@ interface UseExtraExpenseListResult extends Omit<UseCashFlowListResult<ExtraExpe
   extraExpenses: ExtraExpenseRecord[];
 }
 
-interface UseExtraExpensesManagerResult extends TransactionManagerStore {
-  items: ExtraExpenseRecord[];
-}
+type UseExtraExpensesManagerResult = TransactionManagerStore<
+  ExtraExpenseRecord,
+  "id_extra_expense"
+>;
 
 export type {
   ExtraExpenseRecord,

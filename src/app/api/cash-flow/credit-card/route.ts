@@ -46,6 +46,13 @@ export async function GET(request: Request) {
     .select()
     .single();
 
+  if (insertError) {
+    return NextResponse.json(
+      { error: `Failed to create credit card: ${insertError.message}` },
+      { status: 500 }
+    );
+  }
+
   return NextResponse.json([created], { status: 201 });
 }
 

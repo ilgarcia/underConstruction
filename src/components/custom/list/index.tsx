@@ -90,8 +90,8 @@ export function CustomList<T>({
     setIsDeleting(true);
     try {
       await onDeleteBatch?.(ids);
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao excluir itens.");
+    } catch (err) {
+      toast.error(err instanceof Error && err.message ? err.message : "Erro ao excluir itens.");
       setHiddenIds((prev) => {
         const next = new Set(prev);
         ids.forEach((id) => next.delete(id));
@@ -132,7 +132,7 @@ export function CustomList<T>({
             try {
               await onUndo(deletedItems);
               toast.success("Ação desfeita com sucesso!");
-            } catch (err: any) {
+            } catch {
               toast.error("Erro ao desfazer exclusão.");
             }
           },

@@ -25,20 +25,16 @@ export function Category({ idUserWallet }: CategoryFormProps) {
   const { updateCreditCard } = useCreditCardUpdate();
   const { createCreditCard, isCreating } = useCreditCardCreate();
   const { deleteCreditCard, isDeleting } = useCreditCardDelete();
-  const [selectedCardId, setSelectedCardId] = React.useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [chosenCardId, setSelectedCardId] = React.useState<string | null>(null);
+  // Card whose deletion is waiting for confirmation; switching cards cancels it
+  const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null);
+
+  // Falls back to the first card while none is chosen or the chosen one no longer exists
+  const selectedCardId = creditCards.some((c) => c.id_credit_card === chosenCardId)
+    ? chosenCardId
+    : (creditCards[0]?.id_credit_card ?? null);
+  const confirmDelete = confirmDeleteId !== null && confirmDeleteId === selectedCardId;
   const balanceManager = useCreditCardBalanceManager(selectedCardId || undefined);
-
-  React.useEffect(() => {
-    const stillExists = creditCards.some((c) => c.id_credit_card === selectedCardId);
-    if (creditCards.length > 0 && !stillExists) {
-      setSelectedCardId(creditCards[0].id_credit_card);
-    }
-  }, [creditCards, selectedCardId]);
-
-  React.useEffect(() => {
-    setConfirmDelete(false);
-  }, [selectedCardId]);
 
   const card = creditCards.find((c) => c.id_credit_card === selectedCardId);
   const canDelete = creditCards.length >= 2;
@@ -154,7 +150,7 @@ export function Category({ idUserWallet }: CategoryFormProps) {
                   <div className="flex gap-2">
                     <ActionButton
                       label="Cancelar"
-                      onClick={() => setConfirmDelete(false)}
+                      onClick={() => setConfirmDeleteId(null)}
                       className="w-auto px-4 bg-transparent border border-input"
                     />
                     <ActionButton
@@ -169,7 +165,7 @@ export function Category({ idUserWallet }: CategoryFormProps) {
                 <ActionButton
                   label="Excluir cartão"
                   icon={<Trash2 className="size-4" />}
-                  onClick={() => setConfirmDelete(true)}
+                  onClick={() => setConfirmDeleteId(selectedCardId)}
                   className="w-auto self-end px-4 bg-transparent border border-destructive text-destructive"
                 />
               )}

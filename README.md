@@ -31,6 +31,7 @@ The UI is in Brazilian Portuguese (pt-BR) and amounts are formatted in BRL.
 | Charts/tables | Recharts, TanStack Table                                             |
 | Auth          | NextAuth.js v4 (Google provider, JWT sessions)                       |
 | Database      | Supabase (Postgres), accessed server-side with the service role key  |
+| Testing       | Jest, React Testing Library, GitHub Actions                          |
 
 ## Getting started
 
@@ -123,6 +124,15 @@ account, and you'll be redirected to `/cash-flow`.
 | `npm run build` | Build for production             |
 | `npm run start` | Serve the production build       |
 | `npm run lint`  | Run ESLint                       |
+| `npm run typecheck` | Type-check with `tsc --noEmit` |
+| `npm test`      | Run the Jest test suite          |
+
+## Tests and CI
+
+Tests use Jest and React Testing Library (configured through `next/jest`) and live next to the
+code they cover as `*.test.ts` / `*.test.tsx`. GitHub Actions (`.github/workflows/ci.yml`) runs
+lint, typecheck, tests and the production build on every pull request and push to `main`. The
+build step uses placeholder environment values, so CI needs no secrets.
 
 ## Project structure
 

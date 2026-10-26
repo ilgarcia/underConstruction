@@ -24,13 +24,17 @@ export function Dropdown({
     return options.length > 0 ? [options[0].id] : [];
   });
 
+  // First option picked automatically when the options arrive after mount
+  const [autoSelectedId, setAutoSelectedId] = React.useState<string | null>(null);
+
+  if (selectedIds.length === 0 && options.length > 0) {
+    setSelectedIds([options[0].id]);
+    setAutoSelectedId(options[0].id);
+  }
+
   React.useEffect(() => {
-    if (selectedIds.length === 0 && options.length > 0) {
-      const initialId = options[0].id;
-      setSelectedIds([initialId]);
-      onOptionChange?.([initialId]);
-    }
-  }, [options, selectedIds.length, onOptionChange]);
+    if (autoSelectedId) onOptionChange?.([autoSelectedId]);
+  }, [autoSelectedId, onOptionChange]);
 
   const toggleOption = (id: string) => {
     const isSelected = selectedIds.includes(id);

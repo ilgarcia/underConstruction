@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -10,10 +10,11 @@ import { transactionSchema, TransactionData, TransactionInput } from "./schema";
 import { CustomList, ListColumn } from "@/components/custom";
 import { toast } from "sonner";
 import { formatCurrency } from "@/helpers/currency";
-import { describeFrequency, toMonthKey, type MonthlyFrequency } from "@/helpers/month";
+import { describeFrequency, toMonthKey } from "@/helpers/month";
 import { FrequencyFields } from "./frequency-fields";
+import { TransactionItem, TransactionManagerProps, TransactionPayload } from "./types";
 
-const baseColumns: ListColumn<any>[] = [
+const baseColumns: ListColumn<TransactionItem>[] = [
   {
     header: "Dia",
     render: (item) => item.vl_day,
@@ -31,18 +32,32 @@ const baseColumns: ListColumn<any>[] = [
   },
 ];
 
-const frequencyColumn: ListColumn<MonthlyFrequency> = {
+const frequencyColumn: ListColumn<TransactionItem> = {
   header: "Frequência",
-  render: (item) => describeFrequency(item),
+  render: ({ dt_start_month, nr_months }) =>
+    dt_start_month && describeFrequency({ dt_start_month, nr_months: nr_months ?? null }),
   className: "text-xs text-muted-foreground whitespace-nowrap",
 };
 
 // Frequency goes between the description and the amount
 const frequencyColumns = [...baseColumns.slice(0, 2), frequencyColumn, baseColumns[2]];
 
-import { TransactionManagerProps } from "./types";
+const getDefaultValues = (): TransactionInput => ({
+  day_picker: new Date().getDate(),
+  description: "",
+  value: 0,
+  frequency: "always",
+  nr_months: 1,
+  dt_start_month: toMonthKey(new Date()),
+});
 
-export function TransactionManager({
+const errorMessage = (err: unknown, fallback: string): string =>
+  err instanceof Error && err.message ? err.message : fallback;
+
+export function TransactionManager<
+  T extends TransactionItem & Record<K, string>,
+  K extends string,
+>({
   targetLabel,
   listTitle,
   idKey,
@@ -50,7 +65,7 @@ export function TransactionManager({
   withFrequency = false,
   onSubmit,
   onEditChange
-}: TransactionManagerProps) {
+}: TransactionManagerProps<T, K>) {
   const {
     items,
     isLoading,
@@ -60,10 +75,12 @@ export function TransactionManager({
     onDelete
   } = manager;
 
-  const [editItem, setEditItem] = useState<any | null>(null);
+  const [editItem, setEditItem] = useState<T | null>(null);
   const isEditing = !!editItem;
 
-  const mapToTransaction = (data: TransactionData) => ({
+  type TransactionFields = Omit<TransactionPayload, "id_user_wallet">;
+
+  const mapToTransaction = (data: TransactionData): TransactionFields => ({
     ds_description: data.description,
     vl_amount: data.value,
     vl_day: data.day_picker,
@@ -73,40 +90,30 @@ export function TransactionManager({
     }),
   });
 
-  const getDefaultValues = (): TransactionInput => ({
-    day_picker: new Date().getDate(),
-    description: "",
-    value: 0,
-    frequency: "always",
-    nr_months: 1,
-    dt_start_month: toMonthKey(new Date()),
+  const form = useForm<TransactionInput, undefined, TransactionData>({
+    resolver: zodResolver(transactionSchema),
+    defaultValues: getDefaultValues(),
   });
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setEditItem(null);
     form.reset(getDefaultValues());
-  };
+  }, [form]);
 
   useEffect(() => {
     if (onEditChange) {
       onEditChange(isEditing, editItem, handleCancelEdit);
     }
-  }, [isEditing, editItem, onEditChange]);
-
-  const form = useForm<TransactionInput, undefined, TransactionData>({
-    resolver: zodResolver(transactionSchema),
-    defaultValues: getDefaultValues(),
-  });
+  }, [isEditing, editItem, onEditChange, handleCancelEdit]);
 
   const handleSubmit = async (data: TransactionData) => {
     try {
       const transactionData = mapToTransaction(data);
 
       if (isEditing && editItem) {
-        await onUpdate({
-          [idKey]: editItem[idKey],
-          ...transactionData,
-        });
+        // A computed key widens to `string`, so restore the id's key type
+        const id = { [idKey]: editItem[idKey] } as Record<K, T[K]>;
+        await onUpdate({ ...id, ...transactionData });
         toast.success(`${targetLabel} atualizado com sucesso!`);
         setEditItem(null);
       } else {
@@ -119,12 +126,12 @@ export function TransactionManager({
       }
 
       form.reset(getDefaultValues());
-    } catch (err: any) {
-      toast.error(err.message || `Erro ao salvar ${targetLabel.toLowerCase()}.`);
+    } catch (err) {
+      toast.error(errorMessage(err, `Erro ao salvar ${targetLabel.toLowerCase()}.`));
     }
   };
 
-  const handleRowClick = (item: any) => {
+  const handleRowClick = (item: T) => {
     setEditItem(item);
     form.reset({
       ...getDefaultValues(),
@@ -147,16 +154,17 @@ export function TransactionManager({
       if (editItem && ids.includes(editItem[idKey])) {
         handleCancelEdit();
       }
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao excluir itens.");
+    } catch (err) {
+      toast.error(errorMessage(err, "Erro ao excluir itens."));
     }
   };
 
-  const handleUndo = async (deletedItems: any[]) => {
+  const handleUndo = async (deletedItems: T[]) => {
     try {
       await onCreate(
         deletedItems.map((item) => ({
-          id_user_wallet: item.id_user_wallet,
+          // Card charges have no wallet: the manager's id (the card) owns them
+          id_user_wallet: item.id_user_wallet ?? idUserWallet ?? "",
           ds_description: item.ds_description,
           vl_amount: item.vl_amount,
           vl_day: item.vl_day,
@@ -166,8 +174,8 @@ export function TransactionManager({
           }),
         })),
       );
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao desfazer exclusão.");
+    } catch (err) {
+      toast.error(errorMessage(err, "Erro ao desfazer exclusão."));
     }
   };
 
@@ -228,7 +236,7 @@ export function TransactionManager({
 
       <hr className="border-border" />
 
-      <CustomList<any>
+      <CustomList<T>
         title={listTitle ?? `${targetLabel} Cadastrados`}
         items={items}
         idKey={idKey}
