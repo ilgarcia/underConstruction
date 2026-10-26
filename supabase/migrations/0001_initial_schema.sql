@@ -173,8 +173,12 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Primeiro acesso: troque pelo seu e-mail do Google
+-- Primeiro acesso: troque seu-email@gmail.com pelo seu e-mail do Google
+-- (entra liberado no login e já como admin)
 -- ---------------------------------------------------------------------------
 
 insert into tbl_allowed_users (ds_email, ds_invite_status)
 values ('seu-email@gmail.com', 'accepted');
+
+insert into tbl_users (ds_email, ds_role)
+values ('seu-email@gmail.com', 'admin');
