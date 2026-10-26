@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import { useCreditCardBalanceStore } from "@/store/credit-card-balance-store";
-import type { CreateTransactionParams } from "@/store/transaction-factory";
+import { cashFlowKeys } from "@/lib/query-keys";
+import { useCashFlowList, useCashFlowMutation } from "@/hooks/cash-flow";
+import type { CreateTransactionParams } from "@/hooks/cash-flow/types";
 import type {
   CreditCardBalanceRecord,
+  CreditCardBalanceUpdatePayload,
   UseCreditCardBalanceCreateResult,
   UseCreditCardBalanceDeleteResult,
   UseCreditCardBalanceUpdateResult,
@@ -10,133 +11,79 @@ import type {
   UseCreditCardBalanceManagerResult,
 } from "./types";
 
+const ENDPOINT = "/api/cash-flow/credit-card-balance";
+// Refreshes both the edited card's list and the wallet-wide charges used by the projection
+const invalidate = [cashFlowKeys.cardCharges.all];
+
 function useCreditCardBalanceCreate(): UseCreditCardBalanceCreateResult {
-  const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const mutation = useCashFlowMutation<
+    CreateTransactionParams | CreateTransactionParams[],
+    CreditCardBalanceRecord | CreditCardBalanceRecord[]
+  >({
+    url: ENDPOINT,
+    method: "POST",
+    errorMessage: "Failed to create credit card balance",
+    invalidate,
+  });
 
-  const createCreditCardBalance = async (
-    params: CreateTransactionParams | CreateTransactionParams[],
-  ): Promise<CreditCardBalanceRecord | CreditCardBalanceRecord[]> => {
-    setIsCreating(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/credit-card-balance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to create credit card balance");
-      }
-
-      return await res.json();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsCreating(false);
-    }
+  return {
+    isCreating: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    createCreditCardBalance: mutation.mutateAsync,
   };
-
-  return { isCreating, error, createCreditCardBalance };
 }
 
 function useCreditCardBalanceDelete(): UseCreditCardBalanceDeleteResult {
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const mutation = useCashFlowMutation<string[], unknown>({
+    url: ENDPOINT,
+    method: "DELETE",
+    errorMessage: "Failed to delete credit card balances",
+    toBody: (ids) => ({ ids }),
+    invalidate,
+  });
 
-  const deleteCreditCardBalance = async (ids: string[]) => {
-    setIsDeleting(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/credit-card-balance", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to delete credit card balances");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsDeleting(false);
-    }
+  return {
+    isDeleting: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    deleteCreditCardBalance: async (ids) => {
+      await mutation.mutateAsync(ids);
+    },
   };
-
-  return { isDeleting, error, deleteCreditCardBalance };
 }
 
 function useCreditCardBalanceUpdate(): UseCreditCardBalanceUpdateResult {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const updateCreditCardBalance = async (params: {
-    id_credit_card_balance: string;
-    ds_description?: string;
-    vl_amount?: number;
-    vl_day?: number;
-  }): Promise<CreditCardBalanceRecord> => {
-    setIsUpdating(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/credit-card-balance", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to update credit card balance");
-      }
-
-      return await res.json();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  return { isUpdating, error, updateCreditCardBalance };
-}
-
-function useCreditCardBalanceList(id_credit_card: string | undefined): UseCreditCardBalanceListResult {
-  const {
-    items: balances,
-    totalSum,
-    isLoading,
-    error,
-    fetchItems: fetchBalances,
-  } = useCreditCardBalanceStore();
-
-  useEffect(() => {
-    if (id_credit_card) {
-      fetchBalances(id_credit_card);
-    }
-  }, [id_credit_card, fetchBalances]);
+  const mutation = useCashFlowMutation<CreditCardBalanceUpdatePayload, CreditCardBalanceRecord>({
+    url: ENDPOINT,
+    method: "PATCH",
+    errorMessage: "Failed to update credit card balance",
+    invalidate,
+  });
 
   return {
-    balances,
-    totalSum,
-    isLoading,
-    error,
-    refresh: () => (id_credit_card ? fetchBalances(id_credit_card) : Promise.resolve()),
+    isUpdating: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    updateCreditCardBalance: mutation.mutateAsync,
   };
 }
 
-function useCreditCardBalanceManager(id_credit_card: string | undefined): UseCreditCardBalanceManagerResult {
-  const { balances: items, isLoading, refresh } = useCreditCardBalanceList(id_credit_card);
+/** Recurring charges of one card. */
+function useCreditCardBalanceList(
+  id_credit_card: string | undefined,
+): UseCreditCardBalanceListResult {
+  const { items, ...rest } = useCashFlowList<CreditCardBalanceRecord>(
+    cashFlowKeys.cardCharges.byCard(id_credit_card ?? ""),
+    // The route reads the card id from `wallet_id`
+    id_credit_card ? `${ENDPOINT}?wallet_id=${id_credit_card}` : null,
+    "Failed to load credit card balances",
+  );
+
+  return { balances: items, ...rest };
+}
+
+function useCreditCardBalanceManager(
+  id_credit_card: string | undefined,
+): UseCreditCardBalanceManagerResult {
+  const { balances: items, isLoading } = useCreditCardBalanceList(id_credit_card);
   const { createCreditCardBalance: onCreate } = useCreditCardBalanceCreate();
   const { updateCreditCardBalance: onUpdate } = useCreditCardBalanceUpdate();
   const { deleteCreditCardBalance: onDelete } = useCreditCardBalanceDelete();
@@ -144,17 +91,18 @@ function useCreditCardBalanceManager(id_credit_card: string | undefined): UseCre
   return {
     items,
     isLoading,
-    refresh,
     onCreate,
     onUpdate,
     onDelete,
-    idUserWallet: id_credit_card, // Intercept and pass credit card ID down as if it were a wallet ID, keeping TransactionManager generic
+    // Pass the card id down as if it were a wallet id, keeping TransactionManager generic
+    idUserWallet: id_credit_card,
   };
 }
 
 // Re-export types
 export type {
   CreditCardBalanceRecord,
+  CreditCardBalanceUpdatePayload,
   UseCreditCardBalanceCreateResult,
   UseCreditCardBalanceDeleteResult,
   UseCreditCardBalanceUpdateResult,

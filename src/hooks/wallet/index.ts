@@ -1,58 +1,52 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { requestJson } from "@/lib/api-client";
+import { cashFlowKeys } from "@/lib/query-keys";
 import { useUserStore } from "@/store/user-store";
-import { useWalletStore } from "@/store/wallet-store";
+import { useCashFlowMutation } from "@/hooks/cash-flow";
 import type { WalletRecord, UseWalletInitResult, UseWalletUpdateResult } from "./types";
 
+const ENDPOINT = "/api/cash-flow/wallet";
+
+/** Fetches (or creates, server side) the user's wallet once the session is known. */
 function useWalletInit(): UseWalletInitResult {
   const isLoaded = useUserStore((state) => state.isLoaded);
-  
-  const wallet = useWalletStore((state) => state.wallet);
-  const isLoading = useWalletStore((state) => state.isLoading);
-  const error = useWalletStore((state) => state.error);
-  const fetchWallet = useWalletStore((state) => state.fetchWallet);
 
-  useEffect(() => {
-    // Only fetch if user is loaded and we haven't fetched yet
-    if (isLoaded && !wallet && !isLoading && !error) {
-      fetchWallet();
-    }
-  }, [isLoaded, wallet, isLoading, error, fetchWallet]);
+  const query = useQuery({
+    queryKey: cashFlowKeys.wallet,
+    queryFn: () => requestJson<WalletRecord>(ENDPOINT, "Failed to load wallet"),
+    enabled: isLoaded,
+  });
 
-  return { wallet, isLoading, error };
+  return {
+    wallet: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error?.message ?? null,
+  };
 }
 
 function useWalletUpdate(): UseWalletUpdateResult {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const updateBalanceLocally = useWalletStore((state) => state.updateBalanceLocally);
+  const mutation = useCashFlowMutation<
+    { id_user_wallet: string; vl_balance: number },
+    WalletRecord
+  >({
+    url: ENDPOINT,
+    method: "PATCH",
+    errorMessage: "Failed to update wallet",
+    // The new balance is known, so write it into the cache instead of refetching
+    onSuccess: (_result, { vl_balance }, queryClient) => {
+      queryClient.setQueryData<WalletRecord>(cashFlowKeys.wallet, (wallet) =>
+        wallet ? { ...wallet, vl_balance } : wallet,
+      );
+    },
+  });
 
-  const updateBalance = async (id_user_wallet: string, vl_balance: number): Promise<void> => {
-    setIsUpdating(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/wallet", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_user_wallet, vl_balance }),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to update wallet");
-      }
-      
-      // Update local store so components reactive to the wallet state re-render
-      updateBalanceLocally(vl_balance);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsUpdating(false);
-    }
+  return {
+    isUpdating: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    updateBalance: async (id_user_wallet, vl_balance) => {
+      await mutation.mutateAsync({ id_user_wallet, vl_balance });
+    },
   };
-
-  return { isUpdating, error, updateBalance };
 }
 
 // Re-export types

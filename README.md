@@ -27,7 +27,7 @@ The UI is in Brazilian Portuguese (pt-BR) and amounts are formatted in BRL.
 | Framework     | Next.js 16 (App Router), React 19, TypeScript                        |
 | Styling / UI  | Tailwind CSS 4, shadcn/ui (Radix), lucide-react, next-themes, sonner |
 | Forms         | react-hook-form, zod                                                 |
-| State         | Zustand                                                              |
+| State         | Zustand, TanStack Query                                              |
 | Charts/tables | Recharts, TanStack Table                                             |
 | Auth          | NextAuth.js v4 (Google provider, JWT sessions)                       |
 | Database      | Supabase (Postgres), accessed server-side with the service role key  |
@@ -140,11 +140,11 @@ src/
     ui/                   shadcn/ui primitives
     custom/               Reusable app components
     form/                 Full forms (e.g. cash-flow-form and its private sub-components)
-  hooks/                  Domain hooks (one folder per domain)
-  store/                  Zustand stores
+  hooks/                  Domain hooks (one folder per domain), React Query for server data
+  store/                  Zustand stores (client state only)
   helpers/                Date, month, currency and invoice helpers
-  lib/                    Auth options, Supabase clients, metadata
-  providers/              Auth, theme and user-store providers
+  lib/                    Auth options, Supabase clients, metadata, API client, query keys
+  providers/              Auth, theme, query and user-store providers
 ```
 
 Coding conventions for the project live in [`AGENTS.md`](./AGENTS.md).

@@ -1,9 +1,23 @@
-import type { CreateTransactionParams } from "@/store/transaction-factory";
-import type { CreditCardBalanceRecord } from "@/store/credit-card-balance-store";
+import type { CreateTransactionParams, UseCashFlowListResult } from "@/hooks/cash-flow/types";
 
-export type { CreditCardBalanceRecord };
+interface CreditCardBalanceRecord {
+  id_credit_card_balance: string;
+  id_credit_card: string;
+  ds_description: string;
+  vl_amount: number;
+  vl_day: number;
+  dt_created: string;
+  dt_updated: string;
+}
 
-export interface UseCreditCardBalanceCreateResult {
+interface CreditCardBalanceUpdatePayload {
+  id_credit_card_balance: string;
+  ds_description?: string;
+  vl_amount?: number;
+  vl_day?: number;
+}
+
+interface UseCreditCardBalanceCreateResult {
   isCreating: boolean;
   error: string | null;
   createCreditCardBalance: (
@@ -11,44 +25,42 @@ export interface UseCreditCardBalanceCreateResult {
   ) => Promise<CreditCardBalanceRecord | CreditCardBalanceRecord[]>;
 }
 
-export interface UseCreditCardBalanceDeleteResult {
+interface UseCreditCardBalanceDeleteResult {
   isDeleting: boolean;
   error: string | null;
   deleteCreditCardBalance: (ids: string[]) => Promise<void>;
 }
 
-export interface UseCreditCardBalanceUpdateResult {
+interface UseCreditCardBalanceUpdateResult {
   isUpdating: boolean;
   error: string | null;
-  updateCreditCardBalance: (params: {
-    id_credit_card_balance: string;
-    ds_description?: string;
-    vl_amount?: number;
-    vl_day?: number;
-  }) => Promise<CreditCardBalanceRecord>;
+  updateCreditCardBalance: (
+    params: CreditCardBalanceUpdatePayload,
+  ) => Promise<CreditCardBalanceRecord>;
 }
 
-export interface UseCreditCardBalanceListResult {
+interface UseCreditCardBalanceListResult
+  extends Omit<UseCashFlowListResult<CreditCardBalanceRecord>, "items"> {
   balances: CreditCardBalanceRecord[];
-  totalSum: number;
-  isLoading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
 }
 
-export interface UseCreditCardBalanceManagerResult {
+interface UseCreditCardBalanceManagerResult {
   items: CreditCardBalanceRecord[];
   isLoading: boolean;
-  refresh: () => Promise<void>;
   onCreate: (
     params: CreateTransactionParams | CreateTransactionParams[],
   ) => Promise<CreditCardBalanceRecord | CreditCardBalanceRecord[]>;
-  onUpdate: (params: {
-    id_credit_card_balance: string;
-    ds_description?: string;
-    vl_amount?: number;
-    vl_day?: number;
-  }) => Promise<CreditCardBalanceRecord>;
+  onUpdate: (params: CreditCardBalanceUpdatePayload) => Promise<CreditCardBalanceRecord>;
   onDelete: (ids: string[]) => Promise<void>;
   idUserWallet: string | undefined;
 }
+
+export type {
+  CreditCardBalanceRecord,
+  CreditCardBalanceUpdatePayload,
+  UseCreditCardBalanceCreateResult,
+  UseCreditCardBalanceDeleteResult,
+  UseCreditCardBalanceUpdateResult,
+  UseCreditCardBalanceListResult,
+  UseCreditCardBalanceManagerResult,
+};

@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import { useExtraExpenseStore } from "@/store/extra-expense-store";
-import type { CreateFrequencyParams } from "@/store/transaction-factory";
+import { cashFlowKeys } from "@/lib/query-keys";
+import { useCashFlowList, useCashFlowMutation } from "@/hooks/cash-flow";
+import type { CreateFrequencyParams } from "@/hooks/cash-flow/types";
 import type {
   ExtraExpenseRecord,
+  ExtraExpenseUpdatePayload,
   UseExtraExpenseCreateResult,
   UseExtraExpenseDeleteResult,
   UseExtraExpenseUpdateResult,
@@ -10,137 +11,69 @@ import type {
   UseExtraExpensesManagerResult,
 } from "./types";
 
+const ENDPOINT = "/api/cash-flow/extra-expense";
+const invalidate = [cashFlowKeys.extraExpenses.all];
+
 function useExtraExpenseCreate(): UseExtraExpenseCreateResult {
-  const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const mutation = useCashFlowMutation<
+    CreateFrequencyParams | CreateFrequencyParams[],
+    ExtraExpenseRecord | ExtraExpenseRecord[]
+  >({ url: ENDPOINT, method: "POST", errorMessage: "Failed to create extra expense", invalidate });
 
-  const createExtraExpense = async (
-    params: CreateFrequencyParams | CreateFrequencyParams[],
-  ): Promise<ExtraExpenseRecord | ExtraExpenseRecord[]> => {
-    setIsCreating(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/extra-expense", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to create extra expense");
-      }
-
-      return await res.json();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsCreating(false);
-    }
+  return {
+    isCreating: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    createExtraExpense: mutation.mutateAsync,
   };
-
-  return { isCreating, error, createExtraExpense };
 }
 
 function useExtraExpenseDelete(): UseExtraExpenseDeleteResult {
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const mutation = useCashFlowMutation<string[], unknown>({
+    url: ENDPOINT,
+    method: "DELETE",
+    errorMessage: "Failed to delete extra expenses",
+    toBody: (ids) => ({ ids }),
+    invalidate,
+  });
 
-  const deleteExtraExpenses = async (ids: string[]) => {
-    setIsDeleting(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/extra-expense", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to delete extra expenses");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsDeleting(false);
-    }
+  return {
+    isDeleting: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    deleteExtraExpenses: async (ids) => {
+      await mutation.mutateAsync(ids);
+    },
   };
-
-  return { isDeleting, error, deleteExtraExpenses };
 }
 
 function useExtraExpenseUpdate(): UseExtraExpenseUpdateResult {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const mutation = useCashFlowMutation<ExtraExpenseUpdatePayload, ExtraExpenseRecord>({
+    url: ENDPOINT,
+    method: "PATCH",
+    errorMessage: "Failed to update extra expense",
+    invalidate,
+  });
 
-  const updateExtraExpense = async (params: {
-    id_extra_expense: string;
-    ds_description?: string;
-    vl_amount?: number;
-    vl_day?: number;
-    dt_start_month?: string;
-    nr_months?: number | null;
-  }): Promise<ExtraExpenseRecord> => {
-    setIsUpdating(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/extra-expense", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to update extra expense");
-      }
-
-      return await res.json();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsUpdating(false);
-    }
+  return {
+    isUpdating: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    updateExtraExpense: mutation.mutateAsync,
   };
-
-  return { isUpdating, error, updateExtraExpense };
 }
 
 function useExtraExpenseList(id_user_wallet: string | undefined): UseExtraExpenseListResult {
-  const {
-    items: extraExpenses,
-    totalSum,
-    isLoading,
-    error,
-    fetchItems: fetchExtraExpenses,
-  } = useExtraExpenseStore();
+  const { items, ...rest } = useCashFlowList<ExtraExpenseRecord>(
+    cashFlowKeys.extraExpenses.list(id_user_wallet ?? ""),
+    id_user_wallet ? `${ENDPOINT}?wallet_id=${id_user_wallet}` : null,
+    "Failed to load extra expenses",
+  );
 
-  useEffect(() => {
-    if (id_user_wallet) {
-      fetchExtraExpenses(id_user_wallet);
-    }
-  }, [id_user_wallet, fetchExtraExpenses]);
-
-  return {
-    extraExpenses,
-    totalSum,
-    isLoading,
-    error,
-    refresh: () => (id_user_wallet ? fetchExtraExpenses(id_user_wallet) : Promise.resolve()),
-  };
+  return { extraExpenses: items, ...rest };
 }
 
 function useExtraExpensesManager(
   id_user_wallet: string | undefined,
 ): UseExtraExpensesManagerResult {
-  const { extraExpenses: items, isLoading, refresh } = useExtraExpenseList(id_user_wallet);
+  const { extraExpenses: items, isLoading } = useExtraExpenseList(id_user_wallet);
   const { createExtraExpense: onCreate } = useExtraExpenseCreate();
   const { updateExtraExpense: onUpdate } = useExtraExpenseUpdate();
   const { deleteExtraExpenses: onDelete } = useExtraExpenseDelete();
@@ -148,7 +81,6 @@ function useExtraExpensesManager(
   return {
     items,
     isLoading,
-    refresh,
     onCreate,
     onUpdate,
     onDelete,
@@ -159,6 +91,7 @@ function useExtraExpensesManager(
 // Re-export types
 export type {
   ExtraExpenseRecord,
+  ExtraExpenseUpdatePayload,
   UseExtraExpenseCreateResult,
   UseExtraExpenseDeleteResult,
   UseExtraExpenseUpdateResult,

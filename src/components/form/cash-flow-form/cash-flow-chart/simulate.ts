@@ -4,8 +4,8 @@ import type {
   ExtraExpenseRecord,
   CreditCardRecord,
   CreditCardInvoiceRecord,
+  CreditCardBalanceRecord,
 } from "@/hooks";
-import type { CreditCardBalanceRecord } from "@/store/credit-card-balance-store";
 import { formatDateShort, toYMD } from "@/helpers/date";
 import { dayInMonth, getUpcomingInvoices } from "@/helpers/invoice";
 import { formatMonthShort, isActiveInMonth, toMonthKey } from "@/helpers/month";

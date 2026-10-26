@@ -55,7 +55,6 @@ export function TransactionManager({
     items,
     isLoading,
     idUserWallet,
-    refresh,
     onCreate,
     onUpdate,
     onDelete
@@ -119,7 +118,6 @@ export function TransactionManager({
         toast.success(`${targetLabel} adicionado com sucesso!`);
       }
 
-      await refresh();
       form.reset(getDefaultValues());
     } catch (err: any) {
       toast.error(err.message || `Erro ao salvar ${targetLabel.toLowerCase()}.`);
@@ -149,7 +147,6 @@ export function TransactionManager({
       if (editItem && ids.includes(editItem[idKey])) {
         handleCancelEdit();
       }
-      await refresh();
     } catch (err: any) {
       toast.error(err.message || "Erro ao excluir itens.");
     }
@@ -169,7 +166,6 @@ export function TransactionManager({
           }),
         })),
       );
-      await refresh();
     } catch (err: any) {
       toast.error(err.message || "Erro ao desfazer exclusão.");
     }
