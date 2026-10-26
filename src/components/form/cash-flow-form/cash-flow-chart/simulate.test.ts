@@ -5,13 +5,15 @@ import type {
   ExtraExpenseRecord,
   ReceivableRecord,
 } from "@/hooks";
-import type { CreditCardBalanceRecord } from "@/store/credit-card-balance-store";
 import {
   daysUntilEndOfMonth,
   simulateCashFlow,
   toDailyPoints,
   toMonthlyPoints,
 } from "./simulate";
+
+type CreditCardBalanceRecord =
+  Parameters<typeof simulateCashFlow>[0]["creditCardBalances"][number];
 
 const timestamps = { dt_created: "", dt_updated: "" };
 const base = { id_user_wallet: "wallet", ...timestamps };

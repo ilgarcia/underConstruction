@@ -24,10 +24,13 @@ export function AutoSaveInput({
   const [draft, setDraft] = React.useState<number | string>(value);
   const [status, setStatus] = React.useState<AutoSaveStatus>("idle");
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
+  const [syncedValue, setSyncedValue] = React.useState(value);
 
-  React.useEffect(() => {
+  // Reset the draft when the saved value changes from outside
+  if (value !== syncedValue) {
+    setSyncedValue(value);
     setDraft(value);
-  }, [value]);
+  }
 
   const normalize = (v: number | string) => (isCurrency ? parseCurrency(v) : String(v).trim());
 

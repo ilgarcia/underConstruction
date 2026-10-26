@@ -43,9 +43,7 @@ interface UseReceivableListResult extends Omit<UseCashFlowListResult<ReceivableR
   receivables: ReceivableRecord[];
 }
 
-interface UseReceivablesManagerResult extends TransactionManagerStore {
-  items: ReceivableRecord[];
-}
+type UseReceivablesManagerResult = TransactionManagerStore<ReceivableRecord, "id_receivable">;
 
 export type {
   ReceivableRecord,

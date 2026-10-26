@@ -31,7 +31,8 @@ import { ActionButton } from "../buttons/action-button";
 /**
  * Helper to extract value safely from React input props (which could be string[])
  */
-const getSafeValue = (v: any): string | number => Array.isArray(v) ? v[0] || "" : v;
+const getSafeValue = (v: string | number | readonly string[]): string | number =>
+  typeof v === "string" || typeof v === "number" ? v : v[0] || "";
 
 /**
  * ActionInput - A specialized input with support for prefixes and right-side action buttons.
@@ -99,11 +100,11 @@ export const ActionInput = React.forwardRef<HTMLInputElement, ActionInputProps>(
     );
 
     // Mantém o estado sincronizado se o React Hook Form (ou pái) alterar o value dinamicamente
-    React.useEffect(() => {
-      if (value !== undefined) {
-        setVal(isCurrency ? formatCurrency(getSafeValue(value)) : String(getSafeValue(value)));
-      }
-    }, [value, isCurrency]);
+    const [syncedValue, setSyncedValue] = React.useState(value);
+    if (value !== undefined && value !== syncedValue) {
+      setSyncedValue(value);
+      setVal(isCurrency ? formatCurrency(getSafeValue(value)) : String(getSafeValue(value)));
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       let nextValue = e.target.value;
@@ -231,7 +232,9 @@ export function FormActionInput<T extends FieldValues>({
               onValueChange={(val) => {
                 field.onChange(parseInt(val, 10));
                 // Simulate event
-                props.onChange?.({ target: { value: val } } as any);
+                props.onChange?.(
+                  { target: { value: val } } as unknown as React.ChangeEvent<HTMLInputElement>,
+                );
               }}
               value={field.value?.toString()}
             >

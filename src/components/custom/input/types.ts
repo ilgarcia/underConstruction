@@ -22,6 +22,6 @@ export interface ActionInputProps extends Omit<InputHTMLAttributes<HTMLInputElem
 }
 
 export interface FormActionInputProps<T extends FieldValues> extends ActionInputProps {
-  control: Control<T, any>;
+  control: Control<T>;
   name: Path<T>;
 }
