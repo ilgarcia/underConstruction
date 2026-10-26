@@ -10,8 +10,10 @@ import { transactionSchema, TransactionData, TransactionInput } from "./schema";
 import { CustomList, ListColumn } from "@/components/custom";
 import { toast } from "sonner";
 import { formatCurrency } from "@/helpers/currency";
+import { describeFrequency, toMonthKey, type MonthlyFrequency } from "@/helpers/month";
+import { FrequencyFields } from "./frequency-fields";
 
-const columns: ListColumn<any>[] = [
+const baseColumns: ListColumn<any>[] = [
   {
     header: "Dia",
     render: (item) => item.vl_day,
@@ -29,12 +31,23 @@ const columns: ListColumn<any>[] = [
   },
 ];
 
+const frequencyColumn: ListColumn<MonthlyFrequency> = {
+  header: "Frequência",
+  render: (item) => describeFrequency(item),
+  className: "text-xs text-muted-foreground whitespace-nowrap",
+};
+
+// Frequency goes between the description and the amount
+const frequencyColumns = [...baseColumns.slice(0, 2), frequencyColumn, baseColumns[2]];
+
 import { TransactionManagerProps } from "./types";
 
 export function TransactionManager({
   targetLabel,
+  listTitle,
   idKey,
   manager,
+  withFrequency = false,
   onSubmit,
   onEditChange
 }: TransactionManagerProps) {
@@ -55,12 +68,19 @@ export function TransactionManager({
     ds_description: data.description,
     vl_amount: data.value,
     vl_day: data.day_picker,
+    ...(withFrequency && {
+      dt_start_month: data.dt_start_month,
+      nr_months: data.frequency === "months" ? data.nr_months : null,
+    }),
   });
 
-  const getDefaultValues = () => ({
+  const getDefaultValues = (): TransactionInput => ({
     day_picker: new Date().getDate(),
     description: "",
     value: 0,
+    frequency: "always",
+    nr_months: 1,
+    dt_start_month: toMonthKey(new Date()),
   });
 
   const handleCancelEdit = () => {
@@ -109,9 +129,15 @@ export function TransactionManager({
   const handleRowClick = (item: any) => {
     setEditItem(item);
     form.reset({
+      ...getDefaultValues(),
       day_picker: item.vl_day,
       description: item.ds_description,
       value: item.vl_amount,
+      ...(withFrequency && {
+        frequency: item.nr_months ? "months" : "always",
+        nr_months: item.nr_months ?? 1,
+        dt_start_month: item.dt_start_month,
+      }),
     });
   };
 
@@ -132,11 +158,15 @@ export function TransactionManager({
   const handleUndo = async (deletedItems: any[]) => {
     try {
       await onCreate(
-        deletedItems.map(({ id_user_wallet, ds_description, vl_amount, vl_day }) => ({
-          id_user_wallet,
-          ds_description,
-          vl_amount,
-          vl_day,
+        deletedItems.map((item) => ({
+          id_user_wallet: item.id_user_wallet,
+          ds_description: item.ds_description,
+          vl_amount: item.vl_amount,
+          vl_day: item.vl_day,
+          ...(withFrequency && {
+            dt_start_month: item.dt_start_month,
+            nr_months: item.nr_months,
+          }),
         })),
       );
       await refresh();
@@ -147,59 +177,74 @@ export function TransactionManager({
 
 
   return (
-    <div className="space-y-6 pt-4">
+    <div className="space-y-5">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-12 gap-3 items-start">
-          <div className="col-span-2">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3">
             <Input
               control={form.control}
               name="day_picker"
-              label="Data"
+              label="Dia"
               type="day_picker"
+              containerClassName="flex-[0_1_120px]"
             />
-          </div>
-          <div className="col-span-5">
             <Input
               control={form.control}
               name="description"
               label="Descrição"
               type="text"
               placeholder="Ex: Recebimento ou Gasto"
+              containerClassName="flex-[3_1_220px] min-w-0"
             />
-          </div>
-          <div className="col-span-3">
             <Input
               control={form.control}
               name="value"
               label="Valor"
               type="currency"
+              containerClassName="flex-[1_1_160px] min-w-0"
             />
           </div>
-          <div className="col-span-2 pt-[22px]">
+          {withFrequency && (
+            <FrequencyFields
+              control={form.control}
+              editingStartMonth={editItem?.dt_start_month}
+            />
+          )}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {isEditing && (
+              <ActionButton
+                type="button"
+                variant="outline"
+                label="Cancelar"
+                onClick={handleCancelEdit}
+                className="w-auto px-4 bg-transparent border border-input"
+              />
+            )}
             <ActionButton
               type="submit"
               label={isEditing ? "Salvar" : "Confirmar"}
               loading={isSubmitting}
+              className="w-auto px-6 bg-primary text-primary-foreground font-bold"
             />
           </div>
         </form>
       </Form>
 
-      <div className="border-t border-zinc-200 dark:border-zinc-800 p-2">
-        <CustomList<any>
-          title={`${targetLabel} Cadastrados`}
-          items={items}
-          idKey={idKey}
-          columns={columns}
-          isLoading={isLoading}
-          onDeleteBatch={handleDelete}
-          onUndo={handleUndo}
-          onEdit={handleRowClick}
-          highlightedId={editItem?.[idKey]}
-          showConfirmation={false}
-          enableUndo={true}
-        />
-      </div>
+      <hr className="border-border" />
+
+      <CustomList<any>
+        title={listTitle ?? `${targetLabel} Cadastrados`}
+        items={items}
+        idKey={idKey}
+        columns={withFrequency ? frequencyColumns : baseColumns}
+        isLoading={isLoading}
+        onDeleteBatch={handleDelete}
+        onUndo={handleUndo}
+        onEdit={handleRowClick}
+        highlightedId={editItem?.[idKey]}
+        showConfirmation={false}
+        enableUndo={true}
+      />
     </div>
   );
 }

@@ -1,172 +1,198 @@
 "use client";
 
 import * as React from "react";
-import { CategoryFormProps } from "./types";
-import { ActionButton, CustomTabs } from "@/components/custom";
-import { useCreditCardInit, useCreditCardUpdate, useCreditCardBalanceManager } from "@/hooks";
-import { Plus } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Form } from "@/components/ui/form";
-import { FormActionInput as Input } from "@/components/custom/input";
-import { creditCardSchema, CreditCardData, CreditCardInput } from "./schema";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { CategoryFormProps } from "./types";
+import { ActionButton, AutoSaveInput, CustomTabs, DaySelect } from "@/components/custom";
+import {
+  useCreditCardInit,
+  useCreditCardUpdate,
+  useCreditCardCreate,
+  useCreditCardDelete,
+  useCreditCardBalanceManager,
+} from "@/hooks";
+import type { CreditCardRecord, CreditCardUpdatePayload } from "@/hooks";
 import { TransactionManager } from "../transaction-manager";
+import { InvoiceSchedule } from "./invoice-schedule";
 
 /**
- * Category - A scoped form component for categorizing transactions.
+ * Category - Manages the wallet's credit cards inline: card settings (saved on blur), the next
+ * invoices (editable per month), card deletion and the recurring charges of the card.
  */
-export function Category({ targetLabel, idUserWallet, onSubmit }: CategoryFormProps) {
+export function Category({ idUserWallet }: CategoryFormProps) {
   const { creditCards, isLoading, error, refresh } = useCreditCardInit(idUserWallet);
   const { updateCreditCard } = useCreditCardUpdate();
+  const { createCreditCard, isCreating } = useCreditCardCreate();
+  const { deleteCreditCard, isDeleting } = useCreditCardDelete();
   const [selectedCardId, setSelectedCardId] = React.useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
   const balanceManager = useCreditCardBalanceManager(selectedCardId || undefined);
 
-  const form = useForm<CreditCardInput, undefined, CreditCardData>({
-    resolver: zodResolver(creditCardSchema),
-    defaultValues: {
-      ds_description: "",
-      dt_day_closing: 1,
-      vl_day: 1,
-      vl_balance: 0,
-    },
-  });
-
   React.useEffect(() => {
-    if (creditCards.length > 0 && !selectedCardId) {
+    const stillExists = creditCards.some((c) => c.id_credit_card === selectedCardId);
+    if (creditCards.length > 0 && !stillExists) {
       setSelectedCardId(creditCards[0].id_credit_card);
     }
   }, [creditCards, selectedCardId]);
 
   React.useEffect(() => {
-    if (selectedCardId && creditCards) {
-      const card = creditCards.find((c) => c.id_credit_card === selectedCardId);
-      if (card) {
-        form.reset({
-          ds_description: card.ds_description,
-          dt_day_closing: card.dt_day_closing,
-          vl_day: card.vl_day,
-          vl_balance: card.vl_balance,
-        });
-      }
-    }
-  }, [selectedCardId, creditCards, form]);
+    setConfirmDelete(false);
+  }, [selectedCardId]);
 
-  const onFormSubmit = async (data: CreditCardData) => {
-    if (!selectedCardId) return;
+  const card = creditCards.find((c) => c.id_credit_card === selectedCardId);
+  const canDelete = creditCards.length >= 2;
 
+  const saveCard = async (changes: Partial<CreditCardUpdatePayload>) => {
+    if (!card) return;
+    const payload: CreditCardUpdatePayload = {
+      id_credit_card: card.id_credit_card,
+      ds_description: card.ds_description,
+      vl_day: card.vl_day,
+      dt_day_closing: card.dt_day_closing,
+      ...changes,
+    };
     try {
-      await updateCreditCard({
-        id_credit_card: selectedCardId,
-        ...data,
-      });
-      form.reset(data);
-      toast.success("Cartão atualizado com sucesso!");
+      await updateCreditCard(payload);
       await refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao atualizar o cartão.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao atualizar o cartão.");
+      throw err;
     }
   };
 
-  const { isSubmitting, isDirty } = form.formState;
+  const handleCreate = async () => {
+    if (!idUserWallet) return;
+    try {
+      const created: CreditCardRecord = await createCreditCard({
+        id_user_wallet: idUserWallet,
+        ds_description: `Cartão ${creditCards.length + 1}`,
+      });
+      await refresh();
+      setSelectedCardId(created.id_credit_card);
+      toast.success("Cartão criado.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao criar o cartão.");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!card) return;
+    try {
+      await deleteCreditCard(card.id_credit_card);
+      setSelectedCardId(null);
+      await refresh();
+      toast.success("Cartão excluído.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir o cartão.");
+    }
+  };
+
+  if (isLoading && creditCards.length === 0) {
+    return <p className="text-xs text-muted-foreground">Carregando...</p>;
+  }
+
+  if (error) {
+    return <p className="text-xs text-destructive">Erro: {error}</p>;
+  }
 
   return (
-    <div className="grid grid-cols-12 gap-6 pt-4 min-h-[600px]">
-      <div className="col-span-2 flex flex-col h-full border-r border-border pr-2">
-        <div className="flex-1 overflow-y-auto space-y-1">
-          {isLoading ? (
-            <p className="text-xs text-muted-foreground">Carregando...</p>
-          ) : error ? (
-            <p className="text-xs text-red-500">Erro: {error}</p>
-          ) : creditCards.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nenhum cartão</p>
-          ) : (
-            <CustomTabs
-              items={creditCards.map(card => ({
-                id: card.id_credit_card,
-                label: card.ds_description,
-              }))}
-              selectedId={selectedCardId}
-              onSelect={setSelectedCardId}
-              vertical
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+        <CustomTabs
+          items={creditCards.map((c) => ({ id: c.id_credit_card, label: c.ds_description }))}
+          selectedId={selectedCardId}
+          onSelect={setSelectedCardId}
+          className="flex-wrap"
+        />
+        <ActionButton
+          label="Novo cartão"
+          icon={<Plus className="size-4" />}
+          loading={isCreating}
+          onClick={handleCreate}
+          className="w-auto px-3 bg-transparent border border-dashed border-input shadow-none"
+        />
+      </div>
+
+      {card && (
+        <>
+          <div className="flex flex-wrap items-start gap-3">
+            <AutoSaveInput
+              key={`name-${card.id_credit_card}`}
+              label="Nome"
+              type="text"
+              value={card.ds_description}
+              onSave={(v) => saveCard({ ds_description: String(v) })}
+              containerClassName="flex-[2_1_200px] min-w-0"
+              hideStatus
             />
-          )}
-        </div>
-        
-        <div className="pt-4 mt-auto">
-          <ActionButton
-            label="Novo"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => console.log("Clicou em Novo Cartão")}
-          />
-        </div>
-      </div>
-
-      {/* Right Column: 10/12 */}
-      <div className="col-span-10 h-full overflow-y-auto">
-        {selectedCardId ? (
-          <div className="p-1 w-full">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onFormSubmit)} className="grid grid-cols-12 gap-3 items-start">
-                <div className="col-span-3">
-                  <Input
-                    control={form.control}
-                    name="ds_description"
-                    label="Nome"
-                    type="text"
-                  />
-                </div>
-                
-                <div className="col-span-2">
-                  <Input
-                    control={form.control}
-                    name="dt_day_closing"
-                    label="Fechamento"
-                    type="day_picker"
-                  />
-                </div>
-                
-                <div className="col-span-2">
-                  <Input
-                    control={form.control}
-                    name="vl_day"
-                    label="Pagamento"
-                    type="day_picker"
-                  />
-                </div>
-                
-                <div className="col-span-3">
-                  <Input
-                    control={form.control}
-                    name="vl_balance"
-                    label="Fatura"
-                    type="currency"
-                  />
-                </div>
-
-                <div className="col-span-2 pt-[22px]">
-                  <ActionButton
-                    type="submit"
-                    label="Salvar"
-                    loading={isSubmitting}
-                    disabled={!isDirty || isSubmitting}
-                  />
-                </div>
-              </form>
-            </Form>
-            
-            <div className="mt-8 border-t border-border pt-4">
-              <TransactionManager
-                targetLabel="Fatura do Cartão"
-                idKey="id_credit_card_balance"
-                manager={balanceManager}
-              />
-            </div>
+            <DaySelect
+              key={`closing-${card.id_credit_card}`}
+              label="Fechamento"
+              value={card.dt_day_closing}
+              onChange={(day) => saveCard({ dt_day_closing: day }).catch(() => undefined)}
+              containerClassName="flex-[1_1_140px]"
+            />
+            <DaySelect
+              key={`payment-${card.id_credit_card}`}
+              label="Pagamento"
+              value={card.vl_day}
+              onChange={(day) => saveCard({ vl_day: day }).catch(() => undefined)}
+              containerClassName="flex-[1_1_140px]"
+            />
           </div>
-        ) : (
-          <p className="text-muted-foreground text-sm">Selecione um cartão ao lado.</p>
-        )}
-      </div>
+
+          <InvoiceSchedule card={card} idUserWallet={idUserWallet} />
+
+          {canDelete && (
+            <div className="flex flex-col gap-3">
+              {confirmDelete ? (
+                <div
+                  role="alert"
+                  className="flex flex-wrap items-center justify-between gap-3 border border-destructive bg-destructive/10 px-4 py-3"
+                >
+                  <span className="text-sm">
+                    Excluir <strong>{card.ds_description}</strong>? Os recorrentes e as faturas dele saem da projeção.
+                  </span>
+                  <div className="flex gap-2">
+                    <ActionButton
+                      label="Cancelar"
+                      onClick={() => setConfirmDelete(false)}
+                      className="w-auto px-4 bg-transparent border border-input"
+                    />
+                    <ActionButton
+                      label="Excluir"
+                      loading={isDeleting}
+                      onClick={handleDelete}
+                      className="w-auto px-4 bg-destructive text-background font-bold"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <ActionButton
+                  label="Excluir cartão"
+                  icon={<Trash2 className="size-4" />}
+                  onClick={() => setConfirmDelete(true)}
+                  className="w-auto self-end px-4 bg-transparent border border-destructive text-destructive"
+                />
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 border-t border-border pt-5">
+            <h4 className="text-sm font-bold">Gastos recorrentes do cartão</h4>
+            <p className="text-xs text-muted-foreground">
+              Entram automaticamente na fatura de todos os meses, no dia informado.
+            </p>
+            <TransactionManager
+              targetLabel="Gasto recorrente"
+              listTitle="Recorrentes cadastrados"
+              idKey="id_credit_card_balance"
+              manager={balanceManager}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

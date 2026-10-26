@@ -1,7 +1,8 @@
-import { BaseTransactionRecord, CreateTransactionParams } from "@/store/transaction-factory";
+import type { BaseTransactionRecord, CreateFrequencyParams } from "@/store/transaction-factory";
+import type { MonthlyFrequency } from "@/helpers/month";
 import type { TransactionManagerStore } from "@/components/form/cash-flow-form/quick-transaction/transaction-manager/types";
 
-interface ReceivableRecord extends BaseTransactionRecord {
+interface ReceivableRecord extends BaseTransactionRecord, MonthlyFrequency {
   id_receivable: string;
 }
 
@@ -9,7 +10,7 @@ interface UseReceivableCreateResult {
   isCreating: boolean;
   error: string | null;
   createReceivable: (
-    params: CreateTransactionParams | CreateTransactionParams[],
+    params: CreateFrequencyParams | CreateFrequencyParams[],
   ) => Promise<ReceivableRecord | ReceivableRecord[]>;
 }
 
@@ -27,6 +28,8 @@ interface UseReceivableUpdateResult {
     ds_description?: string;
     vl_amount?: number;
     vl_day?: number;
+    dt_start_month?: string;
+    nr_months?: number | null;
   }) => Promise<ReceivableRecord>;
 }
 

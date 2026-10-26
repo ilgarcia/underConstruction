@@ -157,7 +157,7 @@ export function CustomList<T>({
   return (
     <div className={cn("space-y-3", className)}>
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+        <h3 className="text-sm font-semibold text-foreground">
           {title}
         </h3>
         {canDelete && (
@@ -171,15 +171,15 @@ export function CustomList<T>({
         )}
       </div>
 
-      <div className="border border-zinc-200 dark:border-zinc-800 overflow-hidden rounded-md bg-white dark:bg-zinc-950">
+      <div className="border border-border overflow-hidden bg-card">
         <div className="min-h-[226px]"> {/* Approx height for header + 5 rows */}
           <Table>
-            <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50 sticky top-0">
+            <TableHeader className="bg-muted sticky top-0">
               <TableRow className="h-8 hover:bg-transparent">
                 {canDelete && (
                   <TableHead className="w-[40px] px-4 py-1.5">
                     <Checkbox
-                      className="border-zinc-300"
+                      className="border-input"
                       checked={paginatedItems.length > 0 && selectedIds.size === paginatedItems.length}
                       onCheckedChange={toggleSelectAll}
                     />
@@ -198,7 +198,7 @@ export function CustomList<T>({
                 <TableRow className="h-[200px]">
                   <TableCell
                     colSpan={columns.length + (canDelete ? 1 : 0) + (onEdit ? 1 : 0)}
-                    className="text-center text-zinc-500"
+                    className="text-center text-muted-foreground"
                   >
                     Carregando...
                   </TableCell>
@@ -207,7 +207,7 @@ export function CustomList<T>({
                 <TableRow className="h-[200px]">
                   <TableCell
                     colSpan={columns.length + (canDelete ? 1 : 0) + (onEdit ? 1 : 0)}
-                    className="text-center text-zinc-500"
+                    className="text-center text-muted-foreground"
                   >
                     {emptyMessage}
                   </TableCell>
@@ -224,15 +224,15 @@ export function CustomList<T>({
                         onClick={() => onRowClick?.(item)}
                         className={cn(
                           "h-8 transition-colors",
-                          onRowClick && "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/50",
+                          onRowClick && "cursor-pointer hover:bg-muted/50",
                           isHighlighted &&
-                          "bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-[inset_4px_0_0_0_#18181b] dark:shadow-[inset_4px_0_0_0_#f4f4f5]",
+                          "bg-muted hover:bg-muted shadow-[inset_4px_0_0_0_var(--primary)]",
                         )}
                       >
                         {canDelete && (
                           <TableCell className="px-4 py-1.5" onClick={(e) => e.stopPropagation()}>
                             <Checkbox
-                              className="border-zinc-300"
+                              className="border-input"
                               checked={selectedIds.has(id)}
                               onCheckedChange={() => toggleSelect(id)}
                             />
@@ -252,7 +252,7 @@ export function CustomList<T>({
                                 e.stopPropagation();
                                 onEdit(item);
                               }}
-                              className="h-6 w-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
                               title="Editar"
                             />
                           </TableCell>
@@ -273,20 +273,20 @@ export function CustomList<T>({
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-4 py-2 bg-zinc-50/50 dark:bg-zinc-900/30 border-t border-zinc-200 dark:border-zinc-800 text-[10px] sm:text-xs">
-          <div className="text-zinc-500 font-medium">
+        <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-t border-border text-[10px] sm:text-xs">
+          <div className="text-muted-foreground font-medium">
             {totalItems > 0 ? (
               <>
-                Mostrando <span className="text-zinc-900 dark:text-zinc-100">{startIndex + 1}</span>-
-                <span className="text-zinc-900 dark:text-zinc-100">{Math.min(startIndex + pageSize, totalItems)}</span> de{" "}
-                <span className="text-zinc-900 dark:text-zinc-100">{totalItems}</span> itens
+                Mostrando <span className="text-foreground">{startIndex + 1}</span>-
+                <span className="text-foreground">{Math.min(startIndex + pageSize, totalItems)}</span> de{" "}
+                <span className="text-foreground">{totalItems}</span> itens
               </>
             ) : (
               "Sem itens"
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-zinc-500 hidden sm:inline-block">
+            <span className="text-muted-foreground hidden sm:inline-block">
               Página {activePage} de {totalPages}
             </span>
             <div className="flex items-center gap-1">

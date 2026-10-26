@@ -1,4 +1,5 @@
 import { create, StoreApi, UseBoundStore } from "zustand";
+import type { MonthlyFrequency } from "@/helpers/month";
 
 export interface BaseTransactionRecord {
   id_user_wallet: string;
@@ -10,6 +11,9 @@ export interface BaseTransactionRecord {
 }
 
 export type CreateTransactionParams = Omit<BaseTransactionRecord, "dt_created" | "dt_updated">;
+
+/** Create params for items with a frequency (receivables, extra expenses). */
+export type CreateFrequencyParams = CreateTransactionParams & Partial<MonthlyFrequency>;
 
 export interface GenericTransactionStore<T> {
   items: T[];

@@ -233,7 +233,7 @@ export function FormActionInput<T extends FieldValues>({
                 // Simulate event
                 props.onChange?.({ target: { value: val } } as any);
               }}
-              defaultValue={field.value?.toString()}
+              value={field.value?.toString()}
             >
               <FormControl>
                 <SelectTrigger className="w-full h-9 rounded-none border-zinc-200 dark:border-zinc-800 transition-all focus:ring-1 focus:ring-primary shadow-none">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useReceivableStore } from "@/store/receivable-store";
-import type { CreateTransactionParams } from "@/store/transaction-factory";
+import type { CreateFrequencyParams } from "@/store/transaction-factory";
 import type {
   ReceivableRecord,
   UseReceivableCreateResult,
@@ -15,7 +15,7 @@ function useReceivableCreate(): UseReceivableCreateResult {
   const [error, setError] = useState<string | null>(null);
 
   const createReceivable = async (
-    params: CreateTransactionParams | CreateTransactionParams[],
+    params: CreateFrequencyParams | CreateFrequencyParams[],
   ): Promise<ReceivableRecord | ReceivableRecord[]> => {
     setIsCreating(true);
     setError(null);
@@ -83,6 +83,8 @@ function useReceivableUpdate(): UseReceivableUpdateResult {
     ds_description?: string;
     vl_amount?: number;
     vl_day?: number;
+    dt_start_month?: string;
+    nr_months?: number | null;
   }): Promise<ReceivableRecord> => {
     setIsUpdating(true);
     setError(null);

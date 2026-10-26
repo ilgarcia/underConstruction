@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getRequiredSession } from "@/lib/api-auth";
+import { toFrequency } from "@/helpers/month";
 
 /**
  * GET /api/cash-flow/receivable
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
           ds_description: item.ds_description,
           vl_amount: item.vl_amount,
           vl_day: item.vl_day,
+          ...toFrequency(item),
         })),
       )
       .select();
@@ -97,6 +99,7 @@ export async function POST(request: Request) {
         ds_description,
         vl_amount,
         vl_day,
+        ...toFrequency(body),
       })
       .select()
       .single();
@@ -157,9 +160,13 @@ export async function PATCH(request: Request) {
     ds_description?: string;
     vl_amount?: number;
     vl_day?: number;
+    dt_start_month?: string;
+    nr_months?: number | null;
   };
 
   const { id_receivable, ds_description, vl_amount, vl_day } = body;
+  // Only touch the frequency when the request sends it
+  const frequency = "nr_months" in body ? toFrequency(body) : {};
 
   if (!id_receivable) {
     return NextResponse.json(
@@ -174,6 +181,7 @@ export async function PATCH(request: Request) {
       ds_description,
       vl_amount,
       vl_day,
+      ...frequency,
       dt_updated: new Date().toISOString(),
     })
     .eq("id_receivable", id_receivable)

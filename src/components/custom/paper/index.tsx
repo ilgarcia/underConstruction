@@ -5,7 +5,7 @@ export function Paper({ title, subtitle, children, className }: PaperProps) {
   return (
     <div
       className={cn(
-        "bg-white dark:bg-zinc-900 shadow-sm border border-zinc-200 dark:border-zinc-800 p-6 flex flex-col",
+        "bg-card text-card-foreground border border-border p-6 flex flex-col",
         className
       )}
     >

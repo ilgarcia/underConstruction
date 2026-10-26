@@ -40,7 +40,6 @@ export async function GET(request: Request) {
     .insert({
       id_user_wallet,
       ds_description: "Meu Cartão",
-      vl_balance: 0,
       vl_day: 1,
       dt_day_closing: 1
     })
@@ -61,12 +60,11 @@ export async function PATCH(request: Request) {
   const body = await request.json() as {
     id_credit_card: string;
     ds_description: string;
-    vl_balance: number;
     vl_day: number;
     dt_day_closing: number;
   };
 
-  const { id_credit_card, ds_description, vl_balance, vl_day, dt_day_closing } = body;
+  const { id_credit_card, ds_description, vl_day, dt_day_closing } = body;
 
   if (!id_credit_card) {
     return NextResponse.json({ error: "id_credit_card is required" }, { status: 400 });
@@ -76,7 +74,6 @@ export async function PATCH(request: Request) {
     .from("tbl_credit_cards")
     .update({
       ds_description,
-      vl_balance,
       vl_day,
       dt_day_closing,
       dt_updated: new Date().toISOString(),
@@ -93,4 +90,104 @@ export async function PATCH(request: Request) {
   }
 
   return NextResponse.json(data);
+}
+
+/**
+ * POST /api/cash-flow/credit-card
+ * Creates a new credit card for the given wallet.
+ */
+export async function POST(request: Request) {
+  const { response } = await getRequiredSession();
+  if (response) return response;
+
+  const { id_user_wallet, ds_description } = await request.json() as {
+    id_user_wallet: string;
+    ds_description: string;
+  };
+
+  if (!id_user_wallet || !ds_description) {
+    return NextResponse.json(
+      { error: "id_user_wallet and ds_description are required" },
+      { status: 400 }
+    );
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("tbl_credit_cards")
+    .insert({
+      id_user_wallet,
+      ds_description,
+      vl_day: 1,
+      dt_day_closing: 1,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json(
+      { error: `Failed to create credit card: ${error.message}` },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(data, { status: 201 });
+}
+
+/**
+ * DELETE /api/cash-flow/credit-card
+ * Deletes a credit card. Its recurring charges and invoices go with it (on delete cascade).
+ * The last card of a wallet cannot be deleted.
+ */
+export async function DELETE(request: Request) {
+  const { response } = await getRequiredSession();
+  if (response) return response;
+
+  const { id_credit_card } = await request.json() as { id_credit_card: string };
+
+  if (!id_credit_card) {
+    return NextResponse.json({ error: "id_credit_card is required" }, { status: 400 });
+  }
+
+  const { data: card, error: cardError } = await supabaseAdmin
+    .from("tbl_credit_cards")
+    .select("id_user_wallet")
+    .eq("id_credit_card", id_credit_card)
+    .single();
+
+  if (cardError || !card) {
+    return NextResponse.json({ error: "Credit card not found" }, { status: 404 });
+  }
+
+  const { count, error: countError } = await supabaseAdmin
+    .from("tbl_credit_cards")
+    .select("id_credit_card", { count: "exact", head: true })
+    .eq("id_user_wallet", card.id_user_wallet);
+
+  if (countError) {
+    return NextResponse.json(
+      { error: `Failed to count credit cards: ${countError.message}` },
+      { status: 500 }
+    );
+  }
+
+  if ((count ?? 0) <= 1) {
+    return NextResponse.json(
+      { error: "O último cartão não pode ser excluído." },
+      { status: 400 }
+    );
+  }
+
+  const { error } = await supabaseAdmin
+    .from("tbl_credit_cards")
+    .delete()
+    .eq("id_credit_card", id_credit_card);
+
+  if (error) {
+    return NextResponse.json(
+      { error: `Failed to delete credit card: ${error.message}` },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ success: true });
 }

@@ -57,5 +57,17 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+/**
+ * Parses a Brazilian formatted currency string (e.g., "1.234,50") into a number.
+ *
+ * @param value - The formatted string or number
+ * @returns The numeric value, or 0 when it cannot be parsed
+ */
+function parseCurrency(value: string | number): number {
+  if (typeof value === "number") return value;
+  const parsed = parseFloat(value.replace(/\./g, "").replace(",", "."));
+  return isNaN(parsed) ? 0 : parsed;
+}
+
 // Exports
-export { createCurrencySchema, formatCurrency };
+export { createCurrencySchema, formatCurrency, parseCurrency };

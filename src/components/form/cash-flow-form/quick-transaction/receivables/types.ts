@@ -1,5 +1,6 @@
 export interface ReceivablesFormProps {
   targetLabel: string;
+  listTitle?: string;
   idUserWallet?: string;
   onSubmit?: (data: any) => void;
   onClose?: () => void;

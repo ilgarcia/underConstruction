@@ -13,11 +13,11 @@ export function Page({
   onOptionChange,
 }: PageProps) {
   return (
-    <div className="flex-1 w-full lg:h-[calc(100vh-48px)] p-8 bg-zinc-50 dark:bg-zinc-950 shadow-sm lg:overflow-hidden flex flex-col">
-      <div className="max-w-[1400px] mx-auto w-full space-y-8 flex-1 flex flex-col min-h-0">
+    <div className="flex-1 w-full sm:p-2 bg-background flex flex-col">
+      <div className="max-w-[1120px] mx-auto w-full space-y-6 flex-1 flex flex-col min-h-0">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <section>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
               {title}
             </h1>
             <section className="text-muted-foreground mt-2">

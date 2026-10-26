@@ -15,7 +15,7 @@ export default async function PrivateLayout({
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40 font-sans">
+    <div className="flex min-h-screen w-full flex-col bg-background font-sans">
       <Sidebar user={session.user} />
       <div className="flex flex-col sm:pl-16 flex-1">
         <main className="flex flex-col flex-1 h-full p-6">
