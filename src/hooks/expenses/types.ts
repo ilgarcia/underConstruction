@@ -1,8 +1,19 @@
-import { BaseTransactionRecord, CreateTransactionParams } from "@/store/transaction-factory";
+import type {
+  BaseTransactionRecord,
+  CreateTransactionParams,
+  UseCashFlowListResult,
+} from "@/hooks/cash-flow/types";
 import type { TransactionManagerStore } from "@/components/form/cash-flow-form/quick-transaction/transaction-manager/types";
 
 interface ExpensesRecord extends BaseTransactionRecord {
   id_expense: string;
+}
+
+interface ExpensesUpdatePayload {
+  id_expense: string;
+  ds_description?: string;
+  vl_amount?: number;
+  vl_day?: number;
 }
 
 interface UseExpensesCreateResult {
@@ -22,20 +33,11 @@ interface UseExpensesDeleteResult {
 interface UseExpensesUpdateResult {
   isUpdating: boolean;
   error: string | null;
-  updateExpenses: (params: {
-    id_expense: string;
-    ds_description?: string;
-    vl_amount?: number;
-    vl_day?: number;
-  }) => Promise<ExpensesRecord>;
+  updateExpenses: (params: ExpensesUpdatePayload) => Promise<ExpensesRecord>;
 }
 
-interface UseExpensesListResult {
+interface UseExpensesListResult extends Omit<UseCashFlowListResult<ExpensesRecord>, "items"> {
   expenses: ExpensesRecord[];
-  totalSum: number;
-  isLoading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
 }
 
 interface UseExpensesManagerResult extends TransactionManagerStore {
@@ -44,6 +46,7 @@ interface UseExpensesManagerResult extends TransactionManagerStore {
 
 export type {
   ExpensesRecord,
+  ExpensesUpdatePayload,
   UseExpensesCreateResult,
   UseExpensesDeleteResult,
   UseExpensesUpdateResult,

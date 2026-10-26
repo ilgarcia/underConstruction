@@ -2,7 +2,6 @@ export interface TransactionManagerStore {
   items: any[];
   isLoading: boolean;
   idUserWallet?: string;
-  refresh: () => Promise<void>;
   onCreate: (data: any) => Promise<any>;
   onUpdate: (data: any) => Promise<any>;
   onDelete: (ids: string[]) => Promise<any>;

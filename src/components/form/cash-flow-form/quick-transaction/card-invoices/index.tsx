@@ -21,7 +21,7 @@ import { InvoiceSchedule } from "./invoice-schedule";
  * invoices (editable per month), card deletion and the recurring charges of the card.
  */
 export function Category({ idUserWallet }: CategoryFormProps) {
-  const { creditCards, isLoading, error, refresh } = useCreditCardInit(idUserWallet);
+  const { creditCards, isLoading, error } = useCreditCardInit(idUserWallet);
   const { updateCreditCard } = useCreditCardUpdate();
   const { createCreditCard, isCreating } = useCreditCardCreate();
   const { deleteCreditCard, isDeleting } = useCreditCardDelete();
@@ -54,7 +54,6 @@ export function Category({ idUserWallet }: CategoryFormProps) {
     };
     try {
       await updateCreditCard(payload);
-      await refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao atualizar o cartão.");
       throw err;
@@ -68,7 +67,6 @@ export function Category({ idUserWallet }: CategoryFormProps) {
         id_user_wallet: idUserWallet,
         ds_description: `Cartão ${creditCards.length + 1}`,
       });
-      await refresh();
       setSelectedCardId(created.id_credit_card);
       toast.success("Cartão criado.");
     } catch (err) {
@@ -81,7 +79,6 @@ export function Category({ idUserWallet }: CategoryFormProps) {
     try {
       await deleteCreditCard(card.id_credit_card);
       setSelectedCardId(null);
-      await refresh();
       toast.success("Cartão excluído.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao excluir o cartão.");

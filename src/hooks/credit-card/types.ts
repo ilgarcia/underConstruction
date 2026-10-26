@@ -12,7 +12,6 @@ export interface UseCreditCardInitResult {
   creditCards: CreditCardRecord[];
   isLoading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
 }
 
 export interface CreditCardUpdatePayload {

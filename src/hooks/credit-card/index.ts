@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
-import { useCreditCardStore } from "@/store/credit-card-store";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { requestJson } from "@/lib/api-client";
+import { cashFlowKeys } from "@/lib/query-keys";
+import { useCashFlowMutation } from "@/hooks/cash-flow";
 import type {
   CreditCardRecord,
   UseCreditCardInitResult,
@@ -10,117 +13,81 @@ import type {
   CreditCardCreatePayload,
 } from "./types";
 
+const ENDPOINT = "/api/cash-flow/credit-card";
+
 function useCreditCardInit(idUserWallet: string | undefined): UseCreditCardInitResult {
-  const creditCards = useCreditCardStore((state) => state.creditCards);
-  const walletId = useCreditCardStore((state) => state.walletId);
-  const isLoading = useCreditCardStore((state) => state.isLoading);
-  const error = useCreditCardStore((state) => state.error);
-  const fetchCreditCards = useCreditCardStore((state) => state.fetchCreditCards);
+  const query = useQuery({
+    queryKey: cashFlowKeys.creditCards.list(idUserWallet ?? ""),
+    queryFn: () =>
+      requestJson<CreditCardRecord[]>(
+        `${ENDPOINT}?id_user_wallet=${idUserWallet}`,
+        "Failed to load credit cards",
+      ),
+    enabled: Boolean(idUserWallet),
+  });
 
-  useEffect(() => {
-    // Shared store: only fetch when the wallet changes
-    if (idUserWallet && walletId !== idUserWallet) {
-      fetchCreditCards(idUserWallet);
-    }
-  }, [idUserWallet, walletId, fetchCreditCards]);
+  const creditCards = useMemo(() => query.data ?? [], [query.data]);
 
-  const refresh = async () => {
-    if (idUserWallet) await fetchCreditCards(idUserWallet);
+  return {
+    creditCards,
+    isLoading: query.isLoading,
+    error: query.error?.message ?? null,
   };
-
-  return { creditCards, isLoading, error, refresh };
 }
 
 function useCreditCardUpdate(): UseCreditCardUpdateResult {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const mutation = useCashFlowMutation<CreditCardUpdatePayload, CreditCardRecord>({
+    url: ENDPOINT,
+    method: "PATCH",
+    errorMessage: "Failed to update credit card",
+    invalidate: [cashFlowKeys.creditCards.all],
+  });
 
-  const updateCreditCard = async (payload: CreditCardUpdatePayload): Promise<void> => {
-    setIsUpdating(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/credit-card", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to update credit card");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsUpdating(false);
-    }
+  return {
+    isUpdating: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    updateCreditCard: async (payload) => {
+      await mutation.mutateAsync(payload);
+    },
   };
-
-  return { isUpdating, error, updateCreditCard };
 }
 
 function useCreditCardCreate(): UseCreditCardCreateResult {
-  const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const mutation = useCashFlowMutation<CreditCardCreatePayload, CreditCardRecord>({
+    url: ENDPOINT,
+    method: "POST",
+    errorMessage: "Failed to create credit card",
+    invalidate: [cashFlowKeys.creditCards.all],
+  });
 
-  const createCreditCard = async (payload: CreditCardCreatePayload): Promise<CreditCardRecord> => {
-    setIsCreating(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/credit-card", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to create credit card");
-      }
-
-      return await res.json();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsCreating(false);
-    }
+  return {
+    isCreating: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    createCreditCard: mutation.mutateAsync,
   };
-
-  return { isCreating, error, createCreditCard };
 }
 
 function useCreditCardDelete(): UseCreditCardDeleteResult {
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const mutation = useCashFlowMutation<string, unknown>({
+    url: ENDPOINT,
+    method: "DELETE",
+    errorMessage: "Failed to delete credit card",
+    toBody: (id_credit_card) => ({ id_credit_card }),
+    // The card's recurring charges and invoices go with it
+    invalidate: [
+      cashFlowKeys.creditCards.all,
+      cashFlowKeys.cardCharges.all,
+      cashFlowKeys.invoices.all,
+    ],
+  });
 
-  const deleteCreditCard = async (id_credit_card: string): Promise<void> => {
-    setIsDeleting(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/cash-flow/credit-card", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_credit_card }),
-      });
-
-      if (!res.ok) {
-        const { error: msg } = await res.json();
-        throw new Error(msg ?? "Failed to delete credit card");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    } finally {
-      setIsDeleting(false);
-    }
+  return {
+    isDeleting: mutation.isPending,
+    error: mutation.error?.message ?? null,
+    deleteCreditCard: async (id_credit_card) => {
+      await mutation.mutateAsync(id_credit_card);
+    },
   };
-
-  return { isDeleting, error, deleteCreditCard };
 }
 
 export type {

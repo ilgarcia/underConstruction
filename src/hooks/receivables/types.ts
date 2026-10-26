@@ -1,9 +1,22 @@
-import type { BaseTransactionRecord, CreateFrequencyParams } from "@/store/transaction-factory";
+import type {
+  BaseTransactionRecord,
+  CreateFrequencyParams,
+  UseCashFlowListResult,
+} from "@/hooks/cash-flow/types";
 import type { MonthlyFrequency } from "@/helpers/month";
 import type { TransactionManagerStore } from "@/components/form/cash-flow-form/quick-transaction/transaction-manager/types";
 
 interface ReceivableRecord extends BaseTransactionRecord, MonthlyFrequency {
   id_receivable: string;
+}
+
+interface ReceivableUpdatePayload {
+  id_receivable: string;
+  ds_description?: string;
+  vl_amount?: number;
+  vl_day?: number;
+  dt_start_month?: string;
+  nr_months?: number | null;
 }
 
 interface UseReceivableCreateResult {
@@ -23,22 +36,11 @@ interface UseReceivableDeleteResult {
 interface UseReceivableUpdateResult {
   isUpdating: boolean;
   error: string | null;
-  updateReceivable: (params: {
-    id_receivable: string;
-    ds_description?: string;
-    vl_amount?: number;
-    vl_day?: number;
-    dt_start_month?: string;
-    nr_months?: number | null;
-  }) => Promise<ReceivableRecord>;
+  updateReceivable: (params: ReceivableUpdatePayload) => Promise<ReceivableRecord>;
 }
 
-interface UseReceivableListResult {
+interface UseReceivableListResult extends Omit<UseCashFlowListResult<ReceivableRecord>, "items"> {
   receivables: ReceivableRecord[];
-  totalSum: number;
-  isLoading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
 }
 
 interface UseReceivablesManagerResult extends TransactionManagerStore {
@@ -47,6 +49,7 @@ interface UseReceivablesManagerResult extends TransactionManagerStore {
 
 export type {
   ReceivableRecord,
+  ReceivableUpdatePayload,
   UseReceivableCreateResult,
   UseReceivableDeleteResult,
   UseReceivableUpdateResult,

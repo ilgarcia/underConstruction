@@ -22,7 +22,7 @@ interface UseCreditCardInvoicesResult {
   error: string | null;
   /** Amount already charged on the invoice of a card due in `monthKey` (0 when none). */
   getInvoiceAmount: (idCreditCard: string, monthKey: string) => number;
-  saveInvoice: (payload: CreditCardInvoicePayload) => Promise<void>;
+  saveInvoice: (payload: CreditCardInvoicePayload) => Promise<CreditCardInvoiceRecord>;
 }
 
 interface InvoiceRow {
@@ -39,7 +39,7 @@ interface InvoiceRow {
 interface UseCardInvoiceScheduleResult {
   /** The next `count` invoices of a card, from the first one due today or later. */
   getSchedule: (card: CreditCardRecord, count: number) => InvoiceRow[];
-  saveInvoice: (payload: CreditCardInvoicePayload) => Promise<void>;
+  saveInvoice: (payload: CreditCardInvoicePayload) => Promise<CreditCardInvoiceRecord>;
 }
 
 export type {
